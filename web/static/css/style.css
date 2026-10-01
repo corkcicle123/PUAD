@@ -3,6 +3,24 @@
    Commercial Industrial Machine Vision Inspection System
    ========================================================================== */
 
+@import url('https://webfontbox.github.io/Arita/font.css');
+
+@font-face {
+  font-family: 'Arita-dotum';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_one@1.0/Arita-dotum-Medium.woff') format('woff');
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'ArittaDodum';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_one@1.0/Arita-dotum-Medium.woff') format('woff');
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* Industrial Palette: High-Contrast Slate, Precision Metals & Technical Accents (Dark Theme Default) */
   --bg-app: #0B0E14;
@@ -53,8 +71,8 @@
   --shadow-panel: 0 4px 12px rgba(0, 0, 0, 0.35);
   --shadow-active: 0 0 10px rgba(56, 189, 248, 0.25);
 
-  /* Fonts */
-  --font-sans: 'Geist', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  /* Fonts - Korean: 아리따 돋움, Roman/Latin: 아리따 LTN (Arita Sans) */
+  --font-sans: 'Arita Sans', 'Arita LTN', 'Arita-dotum', 'ArittaDodum', 'Arita', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
   --font-mono: 'Geist Mono', 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
 }
 
@@ -149,69 +167,121 @@ body {
 .brand-section {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding-bottom: 12px;
+  justify-content: space-between;
+  padding-bottom: 14px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.brand-logo-icon {
-  width: 32px;
-  height: 32px;
-  background: linear-gradient(135deg, #2563EB, #06B6D4);
-  border-radius: var(--radius-md);
+.brand-title-wrap {
   display: flex;
   align-items: center;
-  justify-content: center;
-  color: #FFFFFF;
-  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.4);
 }
 
-.brand-title-wrap h1 {
-  font-size: 1.05rem;
+.brand-title {
+  font-size: 1.35rem;
   font-weight: 700;
   color: var(--ink-primary);
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  margin: 0;
+  font-family: 'Arita Sans', 'Arita LTN', var(--font-sans);
+}
+
+/* --------------------------------------------------------------------------
+   Sophisticated Tactile Theme Toggle Switch
+   -------------------------------------------------------------------------- */
+.theme-switch-wrapper {
   display: flex;
   align-items: center;
-  gap: 6px;
 }
 
-.brand-ver {
-  font-size: 0.68rem;
-  font-family: var(--font-mono);
-  background: var(--color-brand-subtle);
-  color: var(--ink-accent);
-  padding: 1px 5px;
-  border-radius: var(--radius-sm);
-  border: 1px solid rgba(56, 189, 248, 0.3);
-}
-
-.brand-desc {
-  font-size: 0.72rem;
-  color: var(--ink-muted);
-}
-
-.theme-toggle-btn {
-  margin-left: auto;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-md);
+.theme-toggle-switch {
+  position: relative;
+  width: 52px;
+  height: 26px;
+  border-radius: 999px;
   background: var(--bg-panel-elevated);
-  border: 1px solid var(--border-subtle);
+  border: 1px solid var(--border-strong);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 5px;
+  box-sizing: border-box;
+  transition: all 0.28s cubic-bezier(0.4, 0, 0.2, 1);
+  outline: none;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45);
+}
+
+.theme-toggle-switch:hover {
+  border-color: var(--ink-accent);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.45), 0 0 10px rgba(56, 189, 248, 0.22);
+}
+
+.switch-track-icon {
   display: flex;
   align-items: center;
   justify-content: center;
-  cursor: pointer;
-  font-size: 0.90rem;
-  transition: all 0.2s ease;
-  color: var(--ink-primary);
-  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  transition: opacity 0.22s ease, transform 0.22s ease, color 0.22s ease;
+  z-index: 1;
+  pointer-events: none;
 }
 
-.theme-toggle-btn:hover {
-  background: var(--bg-panel-subtle);
-  border-color: var(--border-strong);
-  transform: scale(1.06);
+.switch-track-icon.sun {
+  color: #F59E0B;
+  opacity: 0.4;
+  transform: scale(0.9);
+}
+
+.switch-track-icon.moon {
+  color: #38BDF8;
+  opacity: 1;
+  transform: scale(1.0);
+}
+
+/* Sliding tactile thumb */
+.switch-thumb {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: linear-gradient(145deg, #1E293B, #0F172A);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(56, 189, 248, 0.25);
+  transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), background 0.25s ease, box-shadow 0.25s ease;
+  transform: translateX(26px); /* Dark Mode (default): thumb on right */
+  z-index: 2;
+  pointer-events: none;
+}
+
+/* Light Mode Overrides for Toggle Switch */
+[data-theme="light"] .theme-toggle-switch {
+  background: #E2E8F0;
+  border-color: #CBD5E1;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+[data-theme="light"] .switch-track-icon.sun {
+  opacity: 1;
+  color: #D97706;
+  transform: scale(1.05);
+}
+
+[data-theme="light"] .switch-track-icon.moon {
+  opacity: 0.35;
+  color: #64748B;
+  transform: scale(0.9);
+}
+
+[data-theme="light"] .switch-thumb {
+  transform: translateX(0); /* Light Mode: thumb on left */
+  background: #FFFFFF;
+  border-color: rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18), 0 0 0 1px rgba(245, 158, 11, 0.35);
 }
 
 .sidebar-group {

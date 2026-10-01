@@ -100,11 +100,9 @@
     document.documentElement.setAttribute('data-theme', validTheme);
     safeSetTheme(validTheme);
     
-    if (themeToggleIcon) {
-      themeToggleIcon.textContent = (validTheme === 'light') ? '🌙' : '☀️';
-    }
     if (themeToggleBtn) {
-      themeToggleBtn.setAttribute('title', (validTheme === 'light') ? '다크 모드로 전환' : '라이트 모드로 전환');
+      themeToggleBtn.setAttribute('aria-checked', (validTheme === 'dark').toString());
+      themeToggleBtn.setAttribute('title', (validTheme === 'light') ? '다크 모드로 전환 (클릭)' : '라이트 모드로 전환 (클릭)');
     }
     console.log('[PUAD Theme] Active mode:', validTheme);
   }
@@ -314,6 +312,8 @@
   // ------------------------------------------------------------------------
   // 5. Camera Hardware Selector & iPhone Continuity Camera
   // ------------------------------------------------------------------------
+  let isSwitchingCamera = false;
+
   if (cameraSourceSelect) {
     cameraSourceSelect.addEventListener('change', async (e) => {
       let sourceVal = e.target.value;
@@ -326,8 +326,14 @@
         sourceVal = customUrl.trim();
       }
 
+      isSwitchingCamera = true;
+      cameraSourceSelect.disabled = true;
+
+      const isIphone = (sourceVal === '1');
       if (cameraStatusTag) {
-        cameraStatusTag.textContent = `SWITCHING OPTICAL SENSOR [${sourceVal}]...`;
+        cameraStatusTag.textContent = isIphone
+          ? 'CONNECTING TO IPHONE CONTINUITY CAMERA (연결 중, 잠시만 기다려주세요)...'
+          : `SWITCHING OPTICAL SENSOR [${sourceVal}]...`;
       }
 
       try {
@@ -339,6 +345,20 @@
         const data = await res.json();
         if (data.status === 'ok') {
           playTone(950, 0.08);
+          cameraSourceSelect.value = data.source;
+
+          // If was paused and server auto-resumed, update pause button state
+          if (data.is_paused === false && isPaused) {
+            isPaused = false;
+            updatePauseBtnUI(false);
+          }
+
+          if (cameraStatusTag) {
+            cameraStatusTag.textContent = (data.source === '1')
+              ? 'OPTICAL SENSOR: IPHONE CONTINUITY (연결 완료)'
+              : `OPTICAL SENSOR: CAM [${data.source}] ONLINE`;
+          }
+
           // Refresh the 3 persistent stream sockets with timestamp
           const now = Date.now();
           const cardM = document.getElementById('card-main');
@@ -348,17 +368,27 @@
           if (cardR) cardR.querySelector('.stream-img').src = `/roi_feed?t=${now}`;
           if (cardH) cardH.querySelector('.stream-img').src = `/heatmap_feed?t=${now}`;
         } else {
-          alert('카메라 전환 실패: ' + (data.message || '장치를 열 수 없습니다.'));
+          alert('카메라 전환 실패:\n\n' + (data.message || '장치를 열 수 없습니다.'));
+          if (data.current) {
+            cameraSourceSelect.value = data.current;
+          }
+          if (cameraStatusTag) {
+            cameraStatusTag.textContent = 'OPTICAL SENSOR CONNECTION FAILED';
+          }
         }
       } catch (err) {
         console.error('Camera switch error:', err);
+        alert('카메라 통신 오류가 발생했습니다. 잠시 후 다시 시도해주세요.');
+      } finally {
+        cameraSourceSelect.disabled = false;
+        isSwitchingCamera = false;
       }
     });
 
     fetch('/api/cameras')
       .then(res => res.json())
       .then(data => {
-        if (data.current) {
+        if (data.current && !isSwitchingCamera) {
           cameraSourceSelect.value = data.current;
         }
       })
@@ -558,7 +588,7 @@
       }
     }
 
-    if (cameraSourceSelect && !cameraSourceSelect.matches(':focus') && data.camera_id) {
+    if (cameraSourceSelect && !isSwitchingCamera && !cameraSourceSelect.matches(':focus') && data.camera_id) {
       cameraSourceSelect.value = data.camera_id;
     }
 
@@ -797,11 +827,27 @@
     }
   });
 
+  // Auto-recovery for stream image disconnects
+  ['img-stream-main', 'img-stream-roi', 'img-stream-heatmap'].forEach(id => {
+    const img = document.getElementById(id);
+    if (img) {
+      img.addEventListener('error', () => {
+        setTimeout(() => {
+          if (!isSwitchingCamera) {
+            const feedType = (id === 'img-stream-main') ? 'video_feed' : (id === 'img-stream-roi') ? 'roi_feed' : 'heatmap_feed';
+            img.src = `/${feedType}?t=${Date.now()}`;
+          }
+        }, 500);
+      });
+    }
+  });
+
   // ------------------------------------------------------------------------
   // 11. Initialization
   // ------------------------------------------------------------------------
   initTheme();
   setupWebSocket();
-  console.log('[PUAD v2.6] Controller mounted successfully. Theme:', safeGetTheme());
+  console.log('[PUAD] Controller mounted successfully. Theme:', safeGetTheme());
 
 })();
+

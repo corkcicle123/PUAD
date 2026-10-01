@@ -11,8 +11,10 @@ from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 from contextlib import asynccontextmanager
+
 
 from model.patchcore import PatchCoreDetector
 from utils.camera import CameraManager
@@ -136,12 +138,12 @@ def vision_worker():
                 time.sleep(0.12)
                 continue
 
-            if state.cam is None:
+            if state.cam is None or getattr(state.cam, 'is_switching', False):
                 time.sleep(0.05)
                 continue
 
             # If unpaused and camera cap was released, safely re-open on this vision thread
-            if state.cam.cap is None:
+            if state.cam.cap is None and not getattr(state.cam, 'is_switching', False):
                 try:
                     state.cam.start()
                     print(f"[Camera] Hardware successfully re-opened on source '{state.cam.camera_id}'.")
@@ -444,12 +446,27 @@ async def api_roi_size(payload: RoiPayload):
 async def api_switch_camera(payload: CameraPayload):
     if state.cam:
         try:
-            state.cam.switch_camera(payload.source)
+            # If inspection was paused, resume automatically upon explicit camera selection
+            if state.is_paused:
+                state.is_paused = False
+                state.add_log("Camera resumed on optical sensor switch.")
+
+            # Run camera opening & handshake in background thread so event loop remains responsive
+            await run_in_threadpool(state.cam.switch_camera, payload.source)
             state.add_log(f"Camera source changed to [{payload.source}]")
-            return {"status": "ok", "source": str(state.cam.camera_id)}
+            return {
+                "status": "ok",
+                "source": str(state.cam.camera_id),
+                "is_paused": state.is_paused
+            }
         except Exception as e:
-            return {"status": "error", "message": str(e)}
-    return {"status": "error", "message": "Camera not active"}
+            return {
+                "status": "error",
+                "message": str(e),
+                "current": str(state.cam.camera_id),
+                "is_paused": state.is_paused
+            }
+    return {"status": "error", "message": "Camera subsystem not initialized"}
 
 @app.get("/api/cameras")
 async def api_get_cameras():

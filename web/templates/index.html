@@ -5,12 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PUAD // PatchCore Unsupervised Anomaly Detection</title>
   
-  <!-- Modern Industrial Typography -->
+  <!-- Modern Industrial Typography & Amorepacific Arita Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" type="text/css" href="https://webfontbox.github.io/Arita/font.css">
   
-  <link rel="stylesheet" href="/static/css/style.css?v=20261001_v4">
+  <link rel="stylesheet" href="/static/css/style.css?v=20261001_v5">
 </head>
 <body>
 
@@ -21,22 +22,27 @@
          ==================================================================== -->
     <aside class="sidebar-rail">
       
-      <!-- Brand & Project Title + Theme Switcher -->
+      <!-- Brand & Project Title + Sophisticated Toggle Switch -->
       <div class="brand-section">
-        <div class="brand-logo-icon">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-            <polygon points="12 2 2 7 12 12 22 7 12 2"/>
-            <polyline points="2 17 12 22 22 17"/>
-            <polyline points="2 12 12 17 22 12"/>
-          </svg>
-        </div>
         <div class="brand-title-wrap">
-          <h1>PUAD <span class="brand-ver">v2.5 Pro</span></h1>
-          <div class="brand-desc">PatchCore Anomaly Detection AOI</div>
+          <h1 class="brand-title">PUAD</h1>
         </div>
-        <button class="theme-toggle-btn" id="theme-toggle-btn" type="button" title="테마 전환 (라이트/다크 모드)">
-          <span id="theme-toggle-icon">☀️</span>
-        </button>
+        <div class="theme-switch-wrapper" title="다크 / 라이트 모드 전환">
+          <button class="theme-toggle-switch" id="theme-toggle-btn" type="button" role="switch" aria-checked="true" aria-label="테마 전환 토글 스위치">
+            <span class="switch-track-icon sun" aria-hidden="true">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="4"/>
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"/>
+              </svg>
+            </span>
+            <span class="switch-track-icon moon" aria-hidden="true">
+              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+              </svg>
+            </span>
+            <span class="switch-thumb"></span>
+          </button>
+        </div>
       </div>
 
       <!-- Vertical Stream View Switcher (As Requested) -->
