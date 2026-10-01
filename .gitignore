@@ -29,3 +29,17 @@ Thumbs.db
 *.log
 .gemini/
 .agents/
+
+# Privacy & Dataset Protection (Do NOT upload captured camera images to Git)
+data/normal/*
+!data/normal/.gitkeep
+data/models/*
+!data/models/.gitkeep
+data/test/*
+!data/test/.gitkeep
+*.png
+*.jpg
+*.jpeg
+*.pkl
+*.pth
+*.pt
