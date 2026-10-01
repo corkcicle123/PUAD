@@ -1,150 +1,159 @@
-# 🎯 PUAD (PatchCore Unsupervised Anomaly Detection)
-### Commercial Machine Vision Optical Anomaly Detection AOI System
+# PUAD: PatchCore Unsupervised Anomaly Detection
 
-본 프로젝트는 **비지도 학습(Unsupervised Learning) 기반의 PatchCore 알고리즘**을 활용하여, **정상(Normal) 부품 데이터만으로** 전자부품(LED 등)의 결함(스크래치, 핀 휨, 번/과열, 오염, 핀 누락 등)을 실시간으로 탐지하고 히트맵으로 시각화하는 스마트 품질 검사(QA) 시스템입니다.
-
-현재 **노트북 웹캠 단독 데모**로 즉시 시연 가능하며, 향후 **아두이노 기반 컨베이어 벨트 및 분류 서보모터**와 1:1 시리얼 연동이 가능하도록 설계되어 있습니다.
+> **Automated Optical Inspection (AOI) System for Precision Electronic Components**  
+> Real-Time Visual Defect Detection & Localization with Zero Defect Training Data.
 
 ---
 
-## 🌟 시스템 주요 특징
+## 1. Overview
 
-1. **비지도 이상치 탐지 (PatchCore)**:
-   - 불량(Defect) 라벨링이나 사전 학습 데이터가 전혀 필요 없습니다.
-   - 현장에서 **정상 LED 부품 10~15장만 웹캠으로 캡처**하면 **2~3초 만에 모델 학습(메모리 뱅크 구축) 완료**.
-2. **이상 부위 정밀 시각화 (Explainable Heatmap)**:
-   - 단순 합격/불합격 판정에 그치지 않고, **어느 부위(렌즈 스크래치, 다리 휨 등)가 불량인지 빨간색 히트맵**으로 정확히 표시.
-3. **실시간 고속 추론 (15~30 FPS, ~15ms)**:
-   - 경량화된 `ResNet-18` 백본과 Mac Apple Silicon(MPS) 및 CPU 가속을 지원하여 노트북에서도 지연 없이 부드러운 검사 가능.
-4. **미래형 스마트 팩토리 HUD 대시보드**:
-   - 실시간 웹캠 피드 + LED 정렬 스텐실(가이드라인).
-   - 크롭된 ROI 영역 vs 이상치 히트맵 듀얼 뷰.
-   - Anomaly Score 실시간 게이지 바 및 임계값(Threshold) 조절.
-   - 대형 `PASS` / `FAIL` 결과 배너 및 누적 검사 통계(합격률/불량률).
-   - macOS 내장 사운드 연동 (PASS 핑 차임음 / FAIL 경고음).
-5. **아두이노 컨베이어 벨트 연동 준비 완료**:
-   - `arduino/conveyor_controller.ino`: 적외선 센서 감지 -> 정지 -> 시리얼 트리거 -> 판정 결과 수신 -> 불량품 서보모터 분류.
-   - 하드웨어가 없어도 자동으로 시뮬레이션 모드로 전환되어 데모 중단 없음.
+PUAD(PatchCore Unsupervised Anomaly Detection)는 제조 공정에서 정상(Normal) 부품 데이터만을 학습하여 미세 결함(스크래치, 핀 휨, 과열/소손, 이물 오염, 단자 누락 등)을 실시간으로 검출하고 국소화(Localization)하는 산업용 스마트 머신비전 검사 시스템입니다.
+
+지도학습 기반 검사 시스템과 달리 불량 샘플 수집 및 라벨링 비용이 들지 않으며, 소량의 정상 샘플(10~15장) 등록만으로 현장에서 수 초 내에 최적의 결함 판정 모델을 배포할 수 있습니다.
 
 ---
 
-## 📁 프로젝트 구조
+## 2. Key Architecture & Features
+
+### 2.1 PatchCore Algorithm & Feature Bank
+- **Backbone Architecture**: 사전 학습된 `ResNet-18` 백본의 중간 레이어(Layer 2, Layer 3)에서 고차원 패치 임베딩을 추출하여 국소 특징과 문맥 정보를 동시에 확보합니다.
+- **Coreset Subsampling**: 수만 개의 패치 벡터 중 기하학적 다양성을 보존하는 핵심 패치만을 선별(Coreset Subsampling)하여 메모리 풋프린트를 대폭 절감하고 실시간 추론 속도를 보장합니다.
+- **Explainable Heatmap**: 결함 판정 점수(Anomaly Score) 산출과 동시에 원본 이미지 대비 이상 부위를 픽셀 단위 히트맵으로 오버레이하여 결함 원인 분석을 지원합니다.
+- **Hardware Acceleration**: Apple Silicon MPS(Metal Performance Shaders) 및 CUDA, CPU 가속을 지원하여 15~30 FPS (~15ms)의 저지연 실시간 검사가 가능합니다.
+
+### 2.2 Commercial Web Inspection Dashboard
+- **Zero-Delay 3-Screen Layout**: 메인 광학 뷰포트(LIVE)와 서브 검사창(ROI, HEATMAP)을 네이티브 CSS Grid로 구성하여 비디오 소켓 재연결 없이 0ms로 화면 전환을 수행합니다.
+- **Dynamic Inspection Zone (ROI)**: 부품 크기와 카메라 거리에 맞추어 검사 영역 크기(140px ~ 480px)를 실시간으로 미세 조정할 수 있습니다.
+- **Dual Laboratory Themes**: 고대비 클린룸 환경을 위한 고신뢰도 라이트 모드(Light Theme)와 인더스트리얼 다크 모드(Dark Theme)를 원클릭으로 전환할 수 있습니다.
+- **Camera & Hardware Power Management**: 하단 제어 레일을 통해 광학 센서 하드웨어를 즉시 대기(Standby) 및 완전 릴리즈하여 전력 소모 및 발열을 제어할 수 있습니다.
+- **Continuity Camera & Multi-Device Support**: Mac 내장 웹캠, USB 공업용 카메라, iPhone 연속성 카메라 및 네트워크 IP 스트림을 실시간 선택하여 전환할 수 있습니다.
+
+### 2.3 Hardware & PLC Integration
+- **Serial Communication Bridge**: 아두이노 기반 컨베이어 및 분류 시스템과 USB 시리얼(115200 Baud)로 통신합니다.
+- **Optical Trigger**: 적외선(IR) 근접 센서의 `TRIGGER` 신호 수신 즉시 판정을 수행합니다.
+- **Automated Sorting**: 판정 결과(`PASS` / `FAIL`)를 액추에이터(서보모터/솔레노이드 밸브)로 전달하여 양품과 불량품을 자동 분별 배출합니다.
+- **Simulation Fallback**: 물리 장비가 연결되지 않은 경우 소프트웨어 시뮬레이션 모드로 자동 전환됩니다.
+
+---
+
+## 3. Directory Structure
 
 ```
-캡스톤_데모1/
-├── main.py                     # [실행 파일] 실시간 웹캠 스마트 QA 대시보드 데모
-├── test_offline.py             # [검증 파일] 카메라 없이 즉시 파이프라인 검증하는 오프라인 테스트
-├── test_sample_generator.py    # 합성 LED 정상 및 불량(5종) 샘플 생성기
-├── requirements.txt            # 파이썬 의존성 패키지 목록
-├── model/
-│   ├── feature_extractor.py    # ResNet-18 기반 패치 임베딩 추출기
-│   └── patchcore.py            # 코어셋 서브샘플링 및 거리 기반 이상치 탐지기
-├── utils/
-│   ├── camera.py               # 웹캠 제어 및 중앙 ROI 크롭 매니저
-│   ├── visualizer.py           # 고해상도 다크모드 공장 QA HUD 렌더러
-│   └── sound.py                # 시스템 오디오 피드백 (합격/불합격 비프음)
-├── arduino/
-│   ├── conveyor_controller.ino # 아두이노 컨베이어 & 서보모터 펌웨어 코드
-│   └── arduino_bridge.py       # 파이썬 <-> 아두이노 USB 시리얼 통신 브릿지
+PUAD/
+├── server.py                   # FastAPI 기반 실시간 웹 AOI 서버 & WebSocket 엔진
+├── main.py                     # OpenCV 데스크톱 독립형 HUD 검사 창
+├── requirements.txt            # Python 의존성 라이브러리 목록
+├── .gitignore                  # Git 버전 관리 예외 규칙
+├── README.md                   # 프로젝트 기술 명세서
+│
+├── model/                      # PatchCore AI 파이프라인
+│   ├── feature_extractor.py    # ResNet-18 패치 임베딩 추출기
+│   └── patchcore.py            # 코어셋 서브샘플링 및 거리 기반 이상치 탐지 엔진
+│
+├── utils/                      # 하드웨어 및 보조 유틸리티
+│   ├── camera.py               # 스레드 안전(RLock) 카메라 제어 및 ROI 추출기
+│   ├── detector.py             # 부품 유무(Presence) 및 윤곽선 분석기
+│   ├── visualizer.py           # 데스크톱 HUD 시각화 모듈
+│   └── sound.py                # 시스템 오디오 신호 제어
+│
+├── web/                        # 상업용 대시보드 웹 인터페이스
+│   ├── templates/
+│   │   └── index.html          # 메인 AOI 모니터링 대시보드 템플릿
+│   └── static/
+│       ├── css/style.css       # 산업용 고대비 디자인 시스템 (라이트/다크 모드)
+│       └── js/app.js           # 0ms 스트림 전환, 텔레메트리 및 하드웨어 연동 컨트롤러
+│
+├── arduino/                    # PLC / 임베디드 펌웨어 및 브릿지
+│   ├── conveyor_controller.ino # 컨베이어 모터 및 서보 분류기 펌웨어
+│   └── arduino_bridge.py       # 시리얼 통신 브릿지 (자동 포트 탐색)
+│
 └── data/
-    ├── normal/                 # 등록된 정상 부품 이미지 (자동 저장)
-    ├── test/                   # 불량 테스트 샘플들
-    ├── test_results/           # 검증 벤치마크 및 대시보드 스크린샷
-    └── models/                 # 저장된 PatchCore 메모리 뱅크 (.pkl)
+    ├── models/                 # 배포된 PatchCore 가중치 및 메모리 뱅크 (.pkl)
+    └── normal/                 # 정상 기준 샘플 데이터셋 (.png)
 ```
 
 ---
 
-## 🚀 빠른 시작 가이드
+## 4. Installation & Environment
 
-### 1. 가상환경 활성화 (사전 설치 완료됨)
+### Requirements
+- Python 3.9 이상
+- PyTorch 2.0 이상 (macOS MPS 또는 CUDA 권장)
+- OpenCV (cv2)
+- FastAPI & Uvicorn
 
-터미널에서 프로젝트 디렉토리로 이동 후 아래 명령어를 실행합니다:
+### Setup
 
 ```bash
-cd /Users/colin/Documents/develop/캡스톤_데모1
+# 1. 저장소 클론
+git clone https://github.com/corkcicle123/PUAD.git
+cd PUAD
+
+# 2. 가상환경 생성 및 활성화
+python3 -m venv .venv
 source .venv/bin/activate
-```
 
-*(필요 시 패키지 재설치: `pip install -r requirements.txt`)*
+# 3. 의존성 패키지 설치
+pip install -r requirements.txt
+```
 
 ---
 
-### 2. 오프라인 데모 및 벤치마크 검증 (즉시 확인 가능!)
+## 5. Execution Guide
 
-웹캠 없이 합성 LED 데이터로 모델의 학습과 5종 결함 탐지 성능을 3초 만에 검증할 수 있습니다:
+### Option 1: Web AOI Dashboard (Recommended)
+
+웹 기반 통합 관제 인터페이스를 실행합니다:
 
 ```bash
-python3 test_offline.py
+python3 server.py --port 8000
 ```
 
-실행 시 아래와 같이 정상 1종과 불량 5종(핀 휨, 탄 자국, 핀 결손, 스크래치, 플럭스 오염)을 100% 분류하고 결과 이미지가 저장됩니다:
-- `data/test_results/benchmark_report.png`: 6종 부품의 히트맵 비교 보고서
-- `data/test_results/dashboard_preview.png`: FAIL 상태 대시보드 화면
-- `data/test_results/dashboard_preview_pass.png`: PASS 상태 대시보드 화면
+- **접속 주소**: `http://localhost:8000`
+- **주요 인터페이스 기능**:
+  - `[CH-01 LIVE]`, `[CH-02 ROI]`, `[CH-03 HEATMAP]` 3분할 화면 및 메인 확대 전환
+  - 인스펙션 존 크기 슬라이더 (140px ~ 480px 및 200/280/380px 프리셋)
+  - 불량 판정 임계치(Threshold) 미세 조절
+  - 라이트/다크 테마 토글 버튼 (`☀️` / `🌙`)
+  - 카메라 끄기 및 검사 일시중지 버튼 (`⏸️` / `▶️`)
+  - 실시간 SPC 통계 (총 검사 수, 수율, 불량률, 추론 지연 시간, 감사 로그)
 
----
+### Option 2: Desktop Native HUD
 
-### 3. 실시간 대시보드 실행 방법 (2가지 지원)
+브라우저 없이 OpenCV 고해상도 그래픽 창으로 직접 실행합니다:
 
-#### 방법 A: 웹 브라우저 대시보드 (강력 추천 🌐)
-브라우저로 접속하여 깔끔하고 세련된 UI로 시연할 수 있습니다:
-```bash
-python3 server.py
-```
-* **접속 주소**: [http://localhost:8000](http://localhost:8000)
-* **특징**:
-  - 메인 웹캠 스트림 + 크롭된 ROI + 실시간 이상치 Heatmap 동시 스트리밍
-  - 상단 `🔇 사운드: 끔/켬` 토글 버튼으로 웹 오디오 알림 제어
-  - 마우스 클릭 및 키보드 단축키(`C`, `T`, `R`, `Space`, `+`, `-`) 완벽 지원
-  - 실시간 웹소켓 텔레메트리 (게이지 바, 판정 배너, 검사 통계)
-
-#### 방법 B: OpenCV 고해상도 데스크톱 HUD 창
-별도 브라우저 없이 독립 네이티브 윈도우 창으로 실행:
 ```bash
 python3 main.py
 ```
 
-#### 🎮 조작 키 안내:
-| 키 | 기능 | 설명 |
-|:---:|:---:|:---|
-| **`C`** | 정상 샘플 캡처 | 화면 중앙 가이드에 정상 LED를 두고 누름 (10~15장 권장) |
-| **`T`** | 모델 학습(피팅) | 수집된 정상 샘플로 메모리 뱅크 생성 (약 2초 소요) |
-| **`R`** | 전체 초기화 | 수집된 샘플과 통계를 리셋하고 등록 모드로 복귀 |
-| **`S`** | 모델 파일 저장 | 현재 학습된 모델을 `data/models/`에 수동 저장 |
-| **`L`** | 모델 파일 불러오기 | 이전에 저장된 모델을 즉시 로드하여 검사 시작 |
-| **`+` / `-`** | 임계값 조절 | 민감도(Threshold)를 0.05 단위로 올리거나 내림 |
-| **`SPACE`** | 단일 샷 검사 | 수동 검사 모드일 때 스냅샷 1회 검사 |
-| **`M`** | 검사 모드 전환 | 실시간 연속 추론(Auto) ↔ 스페이스바 수동 검사 토글 |
-| **`Q` / `ESC`** | 프로그램 종료 | 안전하게 종료 |
+- **키보드 단축키**:
+  - `C`: 정상 부품 샘플 캡처 등록
+  - `T`: 수집된 샘플 기반 모델 학습 및 배포
+  - `SPACE`: 단일 샷 수동 검사
+  - `R`: 샘플 데이터 및 통계 초기화
+  - `+` / `-`: 판정 임계치(Threshold) 조절
+  - `Q` / `ESC`: 프로그램 종료
 
 ---
 
-## 💡 캡스톤 발표 및 실시간 시연 팁
+## 6. Hardware Integration Protocol
 
-1. **배경 지그(Background) 세팅**:
-   - 웹캠 바닥에 **흰색 A4 용지**나 **단색 마우스패드**를 깔고 그 위에 LED를 올려놓으면 배경 잡음이 완벽히 차단됩니다.
-2. **정상 샘플 등록 요령**:
-   - 정상 LED 1개를 화면 중앙 노란색 가이드(스텐실) 안에 맞추고 `C` 키를 누릅니다.
-   - 살짝 각도를 틀거나 위치를 2~3mm씩 옮기며 `C` 키를 10~15번 눌러줍니다.
-   - `T` 키를 누르면 2초 만에 학습 완료 안내음과 함께 검사 모드로 진입합니다.
-3. **불량 시연 연출**:
-   - **정상 LED**: 올려놓으면 점수가 0.20~0.30대로 유지되며 초록색 `PASS` 점등.
-   - **불량 1 (오염/스크래치)**: 네임펜으로 렌즈 끝에 작은 점을 찍거나 스티커를 붙이면 즉시 붉은색 히트맵과 함께 `FAIL` 판정!
-   - **불량 2 (다리 휨)**: 핀을 살짝 벌리거나 구부리면 핀 부분에 히트맵이 뜨면서 `FAIL` 판정!
+### 6.1 Serial Specifications
+- **Baud Rate**: `115200`
+- **Data Bits**: 8
+- **Parity**: None
+- **Stop Bits**: 1
+
+### 6.2 Communication Frame
+| 방향 | 메시지 | 설명 |
+|:---|:---|:---|
+| Arduino → Host PC | `TRIGGER\n` | IR 센서 부품 감지 신호 |
+| Arduino → Host PC | `ARDUINO_READY\n` | 컨트롤러 부팅 및 준비 완료 |
+| Host PC → Arduino | `PASS\n` | 양품 판정 (컨베이어 연속 통과) |
+| Host PC → Arduino | `FAIL\n` | 불량 판정 (서보/솔레노이드 배출 구동) |
 
 ---
 
-## 🔌 아두이노 컨베이어 벨트 연동 방법
+## 7. License
 
-추후 컨베이어 벨트 하드웨어를 제작했을 때:
-
-1. **아두이노 업로드**:
-   - Arduino IDE에서 `arduino/conveyor_controller.ino`를 열고 아두이노 보드에 업로드합니다.
-2. **하드웨어 핀 배선**:
-   - `Pin 2`: 적외선 장애물 감지 센서 (IR Sensor OUT)
-   - `Pin 8 & 9`: 컨베이어 모터 드라이버 (DIR & PWM)
-   - `Pin 10`: 불량품 분류 서보모터 (신호선)
-   - `Pin 11 & 12`: 녹색(PASS) / 적색(FAIL) 상태 표시 LED
-3. **PC 연결**:
-   - 아두이노를 USB 케이블로 노트북에 연결하고 `python3 main.py`를 실행하면 `ArduinoBridge`가 자동으로 포트를 감지하여 연동됩니다.
+본 프로젝트는 연구 및 산업용 프로토타입 용도로 제작되었습니다.
