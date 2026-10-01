@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PUAD // PatchCore Unsupervised Anomaly Detection</title>
+  
+  <!-- Modern Industrial Typography -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="/static/css/style.css?v=20261001_v4">
+</head>
+<body>
+
+  <div class="puad-shell">
+
+    <!-- ====================================================================
+         Left Control Rail: Brand, Stream Switcher & Hardware Integration
+         ==================================================================== -->
+    <aside class="sidebar-rail">
+      
+      <!-- Brand & Project Title + Theme Switcher -->
+      <div class="brand-section">
+        <div class="brand-logo-icon">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"/>
+            <polyline points="2 17 12 22 22 17"/>
+            <polyline points="2 12 12 17 22 12"/>
+          </svg>
+        </div>
+        <div class="brand-title-wrap">
+          <h1>PUAD <span class="brand-ver">v2.5 Pro</span></h1>
+          <div class="brand-desc">PatchCore Anomaly Detection AOI</div>
+        </div>
+        <button class="theme-toggle-btn" id="theme-toggle-btn" type="button" title="테마 전환 (라이트/다크 모드)">
+          <span id="theme-toggle-icon">☀️</span>
+        </button>
+      </div>
+
+      <!-- Vertical Stream View Switcher (As Requested) -->
+      <div class="sidebar-group">
+        <div class="sidebar-label">
+          <span>화면 스트림 전환</span>
+          <span style="font-family: var(--font-mono); font-size: 0.65rem;">VIEW</span>
+        </div>
+        <div class="stream-vertical-nav" id="stream-vertical-nav">
+          <button type="button" class="nav-stream-btn active" data-stream="main">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+              <line x1="8" y1="21" x2="16" y2="21"/>
+              <line x1="12" y1="17" x2="12" y2="21"/>
+            </svg>
+            <span>[LIVE] 메인 광학 피드</span>
+          </button>
+
+          <button type="button" class="nav-stream-btn" data-stream="roi">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/>
+              <circle cx="12" cy="12" r="3"/>
+            </svg>
+            <span>[ROI] 검사 대상 영역</span>
+          </button>
+
+          <button type="button" class="nav-stream-btn" data-stream="heatmap">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z"/>
+            </svg>
+            <span>[HEAT] 결함 국소화 히트맵</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Camera Hardware Device Switcher (iPhone 연동 지원) -->
+      <div class="sidebar-group">
+        <div class="sidebar-label">
+          <span>카메라 광학 센서</span>
+          <span style="font-family: var(--font-mono); font-size: 0.65rem;">DEVICE</span>
+        </div>
+        <select class="camera-select-box" id="camera-source-select">
+          <option value="0" selected>0: Mac 내장 카메라 (기본 디바이스)</option>
+          <option value="1">1: iPhone 카메라 (연속성 카메라 - 선택 시 연결)</option>
+          <option value="2">2: 외장 USB 카메라 / 외장 2번</option>
+          <option value="custom">IP 스트림 주소 (직접 입력)...</option>
+        </select>
+      </div>
+
+      <!-- System & Hardware Telemetry Stack -->
+      <div class="sidebar-group">
+        <div class="sidebar-label">시스템 하드웨어 텔레메트리</div>
+        <div class="telemetry-stack">
+          <div class="telem-pill">
+            <span class="telem-pill-label"><span class="status-dot green"></span> 프레임레이트</span>
+            <span class="telem-pill-val" id="fps-val">30.0 FPS</span>
+          </div>
+
+          <div class="telem-pill">
+            <span class="telem-pill-label"><span class="status-dot blue"></span> 추론 지연시간</span>
+            <span class="telem-pill-val" id="latency-val">14.2 ms</span>
+          </div>
+
+          <div class="telem-pill">
+            <span class="telem-pill-label"><span class="status-dot green" id="mode-dot"></span> 동작 모드</span>
+            <span class="telem-pill-val" id="mode-val">INSPECT</span>
+          </div>
+
+          <div class="telem-pill">
+            <span class="telem-pill-label"><span class="status-dot blue"></span> 아두이노 PLC</span>
+            <span class="telem-pill-val" id="arduino-val">STANDALONE</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar Footer Toggles -->
+      <div class="sidebar-footer">
+        <button type="button" class="sidebar-ctrl-btn camera-pause-btn" id="btn-camera-pause-toggle" title="카메라 끄기 및 검사 일시중지">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="camera-pause-icon">
+            <rect x="6" y="4" width="4" height="16"/>
+            <rect x="14" y="4" width="4" height="16"/>
+          </svg>
+          <span id="camera-pause-text">카메라 끄기 / 검사 일시중지</span>
+        </button>
+
+        <button type="button" class="sidebar-ctrl-btn" id="btn-sound-toggle">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+            <line x1="23" y1="9" x2="17" y2="15"/>
+            <line x1="17" y1="9" x2="23" y2="15"/>
+          </svg>
+          <span id="sound-label">AUDIO: OFF</span>
+        </button>
+
+        <button type="button" class="sidebar-ctrl-btn" id="btn-auto-toggle">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span id="auto-mode-text">자동 검사 (Auto-Debounce)</span>
+        </button>
+      </div>
+
+    </aside>
+
+    <!-- ====================================================================
+         Main Workspace: Center Optical Station + Right Intelligence
+         ==================================================================== -->
+    <main class="main-workspace">
+
+      <!-- Center: Optical Vision Station -->
+      <section class="center-optical-station">
+        <div class="station-card">
+          <div class="station-header-bar">
+            <div class="station-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2"/>
+                <line x1="8" y1="21" x2="16" y2="21"/>
+                <line x1="12" y1="17" x2="12" y2="21"/>
+              </svg>
+              <span>광학 비전 스테이션 (CAM-01)</span>
+              <span class="active-stream-badge" id="active-stream-badge">[CH-01: LIVE]</span>
+            </div>
+            
+            <div class="station-header-controls">
+              <button class="view-layout-btn" id="btn-layout-toggle" title="화면 레이아웃 전환 (포커스 뷰 / 3분할 동시 뷰)">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <rect x="3" y="3" width="7" height="7"/>
+                  <rect x="14" y="3" width="7" height="7"/>
+                  <rect x="14" y="14" width="7" height="7"/>
+                  <rect x="3" y="14" width="7" height="7"/>
+                </svg>
+                <span id="layout-toggle-text">3분할 뷰</span>
+              </button>
+
+              <div class="station-badge">
+                SENSOR: 1280x720 · ROI: <span id="viewfinder-roi-badge">280px</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Station Viewport: Exactly 3 Screens (1 Large Main Top + 2 Sub Screens Bottom) -->
+          <div class="station-viewport-container" id="station-viewport-container">
+            
+            <!-- 1. LIVE Main Optical Feed Card -->
+            <div class="stream-card is-main" id="card-main" data-stream="main">
+              <div class="stream-card-header">
+                <div class="header-left">
+                  <span class="card-ch-pill">CH-01</span>
+                  <span class="card-ch-title">LIVE 메인 광학 피드</span>
+                </div>
+                <span class="card-role-tag main">MAIN ACTIVE</span>
+              </div>
+              <div class="stream-card-body">
+                <img src="/video_feed" alt="Live Main Camera Feed" class="stream-img" id="img-stream-main">
+                <div class="card-overlay-tag left" id="camera-status-tag">ALIGNMENT GUIDE: 5mm LED / IC · STANDBY</div>
+                <div class="card-overlay-tag right" id="latency-tag">LATENCY: 14.2 ms</div>
+                <div class="sub-hover-badge">클릭 시 메인으로 확대</div>
+              </div>
+            </div>
+
+            <!-- 2. ROI Inspection Zone Card -->
+            <div class="stream-card is-sub" id="card-roi" data-stream="roi" title="클릭 시 메인 화면으로 확대 전환">
+              <div class="stream-card-header">
+                <div class="header-left">
+                  <span class="card-ch-pill">CH-02</span>
+                  <span class="card-ch-title">검사 대상 영역 (ROI)</span>
+                </div>
+                <span class="card-role-tag sub">클릭 시 메인 전환 ↗</span>
+              </div>
+              <div class="stream-card-body">
+                <img src="/roi_feed" alt="ROI Target Feed" class="stream-img" id="img-stream-roi">
+                <div class="sub-hover-badge">클릭 시 메인으로 확대</div>
+              </div>
+            </div>
+
+            <!-- 3. Anomaly Heatmap Card -->
+            <div class="stream-card is-sub" id="card-heatmap" data-stream="heatmap" title="클릭 시 메인 화면으로 확대 전환">
+              <div class="stream-card-header">
+                <div class="header-left">
+                  <span class="card-ch-pill">CH-03</span>
+                  <span class="card-ch-title">이상치 국소화 히트맵</span>
+                </div>
+                <span class="card-role-tag sub">클릭 시 메인 전환 ↗</span>
+              </div>
+              <div class="stream-card-body">
+                <img src="/heatmap_feed" alt="Heatmap Feed" class="stream-img" id="img-stream-heatmap">
+                <div class="sub-hover-badge">클릭 시 메인으로 확대</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Action Toolbar Directly Below Viewfinder -->
+          <div class="action-btn-row">
+            <button class="commercial-btn btn-primary" id="btn-capture" title="Shortcut: [C]">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <circle cx="12" cy="12" r="3"/>
+              </svg>
+              샘플 등록
+              <span class="key-tag" id="sample-count-badge">[0/15]</span>
+            </button>
+
+            <button class="commercial-btn btn-secondary" id="btn-train" title="Shortcut: [T]">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="5 3 19 12 5 21 5 3"/>
+              </svg>
+              모델 학습 및 배포
+              <span class="key-tag">T</span>
+            </button>
+
+            <button class="commercial-btn btn-neutral" id="btn-trigger" title="Shortcut: [SPACE]">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                <line x1="12" y1="8" x2="12" y2="16"/>
+                <line x1="8" y1="12" x2="16" y2="12"/>
+              </svg>
+              즉시 검사
+              <span class="key-tag">SPACE</span>
+            </button>
+
+            <button class="commercial-btn btn-neutral" id="btn-reset" title="Shortcut: [R]">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+                <path d="M3 3v5h5"/>
+              </svg>
+              초기화
+              <span class="key-tag">R</span>
+            </button>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right: Inspection Intelligence & Quality Dashboard -->
+      <section class="right-intelligence-panel">
+
+        <!-- Real-Time Annunciator Decision Banner -->
+        <div class="verdict-banner standby" id="verdict-banner">
+          <div class="verdict-left">
+            <div class="verdict-status-icon" id="verdict-icon">--</div>
+            <div class="verdict-text-group">
+              <h2 id="verdict-label">AWAITING COMPONENT</h2>
+              <div class="verdict-caption" id="verdict-subtext">광학 검사 영역에 부품이 감지되면 즉시 분석합니다.</div>
+            </div>
+          </div>
+          <div class="verdict-score-group">
+            <div class="verdict-score-num" id="side-score-val">0.0%</div>
+            <div class="verdict-score-sub">ANOMALY SCORE</div>
+          </div>
+        </div>
+
+        <!-- Gauge & Dual Tuning Controls (Threshold & ROI Size) -->
+        <div class="intel-card">
+          <div class="card-title-row">
+            <div class="card-title-text">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="20" x2="18" y2="10"/>
+                <line x1="12" y1="20" x2="12" y2="4"/>
+                <line x1="6" y1="20" x2="6" y2="14"/>
+              </svg>
+              <span>이상치 점수 및 지능형 임계치 제어</span>
+            </div>
+          </div>
+
+          <!-- Score Gauge Header -->
+          <div class="gauge-header-row">
+            <div>
+              <span style="font-size: 0.72rem; color: var(--ink-muted);">실시간 측정 결함 점수</span>
+              <div class="gauge-val-display" id="gauge-score-text">0.0%</div>
+            </div>
+            <div style="text-align: right;">
+              <span style="font-size: 0.72rem; color: var(--ink-muted);">판별 기준선 (Threshold)</span>
+              <div class="gauge-val-display" id="gauge-limit-text" style="color: var(--ink-accent);">50.0%</div>
+            </div>
+          </div>
+
+          <!-- Continuous Progress Bar with Dynamic Marker Needle -->
+          <div class="score-track-container">
+            <div class="score-bar-fill" id="gauge-fill-bar"></div>
+            <div class="threshold-marker-line" id="threshold-marker-line" style="left: 50%;">
+              <div class="threshold-marker-bubble" id="threshold-marker-bubble">기준선 50%</div>
+            </div>
+          </div>
+
+          <!-- Dual Sliders: 1) Decision Threshold, 2) Inspection Zone ROI Size -->
+          <div class="dual-slider-grid">
+            
+            <!-- 1. Threshold Slider -->
+            <div class="slider-ctrl-box">
+              <div class="slider-label-row">
+                <span>판별 임계치 (Threshold)</span>
+                <span class="slider-num-pill" id="threshold-val-text">0.50 (50%)</span>
+              </div>
+              <input type="range" class="puad-range-slider" id="threshold-slider" min="0.10" max="0.90" step="0.01" value="0.50">
+              <div class="preset-chip-group">
+                <button class="chip-btn" data-preset="0.40">엄격 40%</button>
+                <button class="chip-btn" data-preset="0.50">표준 50%</button>
+                <button class="chip-btn" data-preset="0.65">관대 65%</button>
+              </div>
+            </div>
+
+            <!-- 2. Inspection Zone ROI Size Slider (As Requested!) -->
+            <div class="slider-ctrl-box">
+              <div class="slider-label-row">
+                <span>인스펙션 존 크기 (ROI)</span>
+                <span class="slider-num-pill" id="roi-val-text">280 px</span>
+              </div>
+              <input type="range" class="puad-range-slider" id="roi-slider" min="140" max="480" step="10" value="280">
+              <div class="preset-chip-group">
+                <button class="chip-btn" data-roi="200">소형 200px</button>
+                <button class="chip-btn" data-roi="280">표준 280px</button>
+                <button class="chip-btn" data-roi="380">대형 380px</button>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- SPC Quality Production Yield Metrics (4 Tiles) -->
+        <div class="intel-card">
+          <div class="card-title-row">
+            <div class="card-title-text">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+              </svg>
+              <span>생산 품질 통계 (SPC Quality Metrics)</span>
+            </div>
+            <span style="font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-accent);">PYTORCH MPS ACCELERATED</span>
+          </div>
+
+          <div class="spc-tile-row">
+            <div class="spc-tile">
+              <span class="spc-tile-label">총 검사 수량</span>
+              <span class="spc-tile-val" id="stat-total">0</span>
+              <span class="spc-tile-sub">INSPECTED</span>
+            </div>
+
+            <div class="spc-tile pass">
+              <span class="spc-tile-label">양품 합격 수량</span>
+              <span class="spc-tile-val" id="stat-pass">0</span>
+              <span class="spc-tile-sub" id="stat-pass-rate">100.0% YIELD</span>
+            </div>
+
+            <div class="spc-tile defect">
+              <span class="spc-tile-label">불량 선별 수량</span>
+              <span class="spc-tile-val" id="stat-defect">0</span>
+              <span class="spc-tile-sub" id="stat-rate">0.0% DEFECT</span>
+            </div>
+
+            <div class="spc-tile">
+              <span class="spc-tile-label">추론 지연 시간</span>
+              <span class="spc-tile-val" id="stat-latency">14.2</span>
+              <span class="spc-tile-sub">MILLISECONDS</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Real-Time Audit Log Table -->
+        <div class="intel-card" style="flex: 1; min-height: 120px;">
+          <div class="card-title-row">
+            <div class="card-title-text">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+              </svg>
+              <span>실시간 검사 이력 (Audit Trail Log)</span>
+            </div>
+            <span style="font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-muted);">LIVE EVENT STREAM</span>
+          </div>
+
+          <div class="audit-table-wrap">
+            <table class="audit-table">
+              <thead>
+                <tr>
+                  <th style="width: 20%;">TIME</th>
+                  <th style="width: 28%;">EVENT</th>
+                  <th style="width: 20%;">VERDICT</th>
+                  <th style="width: 32%;">DETAIL</th>
+                </tr>
+              </thead>
+              <tbody id="audit-log-body">
+                <tr>
+                  <td>12:00:00</td>
+                  <td>SYSTEM INIT</td>
+                  <td><span class="badge-pill info">READY</span></td>
+                  <td>PUAD Vision Inspection Suite 가동 준비 완료</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+
+    </main>
+
+  </div>
+
+  <script src="/static/js/app.js?v=20261001_v4"></script>
+</body>
+</html>
