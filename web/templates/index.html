@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" type="text/css" href="https://webfontbox.github.io/Arita/font.css">
   
-  <link rel="stylesheet" href="/static/css/style.css?v=20261001_v5">
+  <link rel="stylesheet" href="/static/css/style.css?v=20261003_v22">
 </head>
 <body>
 
@@ -49,7 +49,7 @@
       <div class="sidebar-group">
         <div class="sidebar-label">
           <span>화면 스트림 전환</span>
-          <span style="font-family: var(--font-mono); font-size: 0.65rem;">VIEW</span>
+          <span style="font-size: 0.65rem; opacity: 0.65; letter-spacing: 0.05em;">VIEW</span>
         </div>
         <div class="stream-vertical-nav" id="stream-vertical-nav">
           <button type="button" class="nav-stream-btn active" data-stream="main">
@@ -82,7 +82,7 @@
       <div class="sidebar-group">
         <div class="sidebar-label">
           <span>카메라 광학 센서</span>
-          <span style="font-family: var(--font-mono); font-size: 0.65rem;">DEVICE</span>
+          <span style="font-size: 0.65rem; opacity: 0.65; letter-spacing: 0.05em;">DEVICE</span>
         </div>
         <select class="camera-select-box" id="camera-source-select">
           <option value="0" selected>0: Mac 내장 카메라 (기본 디바이스)</option>
@@ -164,7 +164,7 @@
                 <line x1="12" y1="17" x2="12" y2="21"/>
               </svg>
               <span>광학 비전 스테이션 (CAM-01)</span>
-              <span class="active-stream-badge" id="active-stream-badge">[CH-01: LIVE]</span>
+              <span class="active-stream-badge" id="active-stream-badge">LIVE</span>
             </div>
             
             <div class="station-header-controls">
@@ -191,14 +191,13 @@
             <div class="stream-card is-main" id="card-main" data-stream="main">
               <div class="stream-card-header">
                 <div class="header-left">
-                  <span class="card-ch-pill">CH-01</span>
-                  <span class="card-ch-title">LIVE 메인 광학 피드</span>
+                  <span class="card-ch-title">실시간 광학 카메라 피드</span>
                 </div>
                 <span class="card-role-tag main">MAIN ACTIVE</span>
               </div>
               <div class="stream-card-body">
                 <img src="/video_feed" alt="Live Main Camera Feed" class="stream-img" id="img-stream-main">
-                <div class="card-overlay-tag left" id="camera-status-tag">ALIGNMENT GUIDE: 5mm LED / IC · STANDBY</div>
+                <div class="card-overlay-tag left" id="camera-status-tag">광학 비전 대기 중</div>
                 <div class="card-overlay-tag right" id="latency-tag">LATENCY: 14.2 ms</div>
                 <div class="sub-hover-badge">클릭 시 메인으로 확대</div>
               </div>
@@ -208,8 +207,7 @@
             <div class="stream-card is-sub" id="card-roi" data-stream="roi" title="클릭 시 메인 화면으로 확대 전환">
               <div class="stream-card-header">
                 <div class="header-left">
-                  <span class="card-ch-pill">CH-02</span>
-                  <span class="card-ch-title">검사 대상 영역 (ROI)</span>
+                  <span class="card-ch-title">인스펙션 존 (ROI)</span>
                 </div>
                 <span class="card-role-tag sub">클릭 시 메인 전환 ↗</span>
               </div>
@@ -223,8 +221,7 @@
             <div class="stream-card is-sub" id="card-heatmap" data-stream="heatmap" title="클릭 시 메인 화면으로 확대 전환">
               <div class="stream-card-header">
                 <div class="header-left">
-                  <span class="card-ch-pill">CH-03</span>
-                  <span class="card-ch-title">이상치 국소화 히트맵</span>
+                  <span class="card-ch-title">이상치 결함 히트맵</span>
                 </div>
                 <span class="card-role-tag sub">클릭 시 메인 전환 ↗</span>
               </div>
@@ -345,17 +342,39 @@
               </div>
             </div>
 
-            <!-- 2. Inspection Zone ROI Size Slider (As Requested!) -->
+            <!-- 2. Inspection Zone ROI Size & Position Tuning -->
             <div class="slider-ctrl-box">
               <div class="slider-label-row">
                 <span>인스펙션 존 크기 (ROI)</span>
-                <span class="slider-num-pill" id="roi-val-text">280 px</span>
+                <span class="slider-num-pill" id="roi-val-text">320 px</span>
               </div>
-              <input type="range" class="puad-range-slider" id="roi-slider" min="140" max="480" step="10" value="280">
+              <input type="range" class="puad-range-slider" id="roi-slider" min="100" max="720" step="10" value="320">
               <div class="preset-chip-group">
-                <button class="chip-btn" data-roi="200">소형 200px</button>
-                <button class="chip-btn" data-roi="280">표준 280px</button>
-                <button class="chip-btn" data-roi="380">대형 380px</button>
+                <button type="button" class="chip-btn" data-roi="180">180px</button>
+                <button type="button" class="chip-btn" data-roi="320">320px</button>
+                <button type="button" class="chip-btn" data-roi="500">500px</button>
+                <button type="button" class="chip-btn" data-roi="700">700px</button>
+              </div>
+
+              <!-- Compact Streamlined 2-Axis Position Tuning -->
+              <div class="roi-pos-streamlined">
+                <div class="roi-axis-row">
+                  <div class="slider-label-row sub">
+                    <span>좌 / 우 (X축)</span>
+                    <span class="slider-num-pill mini" id="roi-x-text">0px</span>
+                  </div>
+                  <input type="range" class="puad-range-slider mini" id="roi-offset-x" min="-350" max="350" step="5" value="0">
+                </div>
+                <div class="roi-axis-row">
+                  <div class="slider-label-row sub">
+                    <span>상 / 하 (Y축)</span>
+                    <span class="slider-num-pill mini" id="roi-y-text">0px</span>
+                  </div>
+                  <input type="range" class="puad-range-slider mini" id="roi-offset-y" min="-250" max="250" step="5" value="0">
+                </div>
+                <button type="button" class="chip-btn reset-pos-chip" id="btn-roi-center" title="인스펙션 존 중앙 원위치">
+                  중앙 정렬 (원위치)
+                </button>
               </div>
             </div>
 
@@ -371,7 +390,6 @@
               </svg>
               <span>생산 품질 통계 (SPC Quality Metrics)</span>
             </div>
-            <span style="font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-accent);">PYTORCH MPS ACCELERATED</span>
           </div>
 
           <div class="spc-tile-row">
@@ -410,7 +428,6 @@
               </svg>
               <span>실시간 검사 이력 (Audit Trail Log)</span>
             </div>
-            <span style="font-family: var(--font-mono); font-size: 0.68rem; color: var(--ink-muted);">LIVE EVENT STREAM</span>
           </div>
 
           <div class="audit-table-wrap">
@@ -441,6 +458,6 @@
 
   </div>
 
-  <script src="/static/js/app.js?v=20261001_v4"></script>
+  <script src="/static/js/app.js?v=20261003_v22"></script>
 </body>
 </html>

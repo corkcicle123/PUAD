@@ -61,11 +61,16 @@
   const thresholdMarkerLine = document.getElementById('threshold-marker-line');
   const thresholdMarkerBubble = document.getElementById('threshold-marker-bubble');
 
-  // Dual Sliders
+  // Dual Sliders & ROI Position Controls
   const thresholdSlider = document.getElementById('threshold-slider');
   const thresholdValText = document.getElementById('threshold-val-text');
   const roiSlider = document.getElementById('roi-slider');
   const roiValText = document.getElementById('roi-val-text');
+  const roiOffsetXSlider = document.getElementById('roi-offset-x');
+  const roiOffsetYSlider = document.getElementById('roi-offset-y');
+  const roiXText = document.getElementById('roi-x-text');
+  const roiYText = document.getElementById('roi-y-text');
+  const btnRoiCenter = document.getElementById('btn-roi-center');
 
   // SPC Yield Tiles
   const statTotal = document.getElementById('stat-total');
@@ -229,9 +234,9 @@
   // Uses Native CSS Grid placement (Zero DOM detachment, Zero MJPEG reload)
   // ------------------------------------------------------------------------
   const STREAM_MAP = {
-    main: { id: 'card-main', badge: '[CH-01: LIVE]' },
-    roi: { id: 'card-roi', badge: '[CH-02: ROI]' },
-    heatmap: { id: 'card-heatmap', badge: '[CH-03: HEAT]' }
+    main: { id: 'card-main', badge: '라이브 메인 피드' },
+    roi: { id: 'card-roi', badge: '인스펙션 존 (ROI)' },
+    heatmap: { id: 'card-heatmap', badge: '이상치 히트맵' }
   };
 
   let currentMainStream = 'main';
@@ -396,58 +401,132 @@
   }
 
   // ------------------------------------------------------------------------
-  // 6. Dynamic Inspection Zone (ROI) Sizing with Instant Throttling
+  // 6. Dynamic Inspection Zone (ROI) Sizing & Zero-Lag 2-Axis Position Tuning
   // ------------------------------------------------------------------------
-  let roiDebounceTimer = null;
   let isRoiUserInteracting = false;
   let lastRoiInteractionTime = 0;
+  let roiSyncInFlight = false;
+  let roiSyncPending = false;
 
-  function updateRoiDisplay(size) {
-    if (roiValText) roiValText.textContent = `${size} px`;
-    if (viewfinderRoiBadge) viewfinderRoiBadge.textContent = `${size}px`;
+  function updateRoiDisplay(size, ox, oy) {
+    const curSize = (size !== undefined && size !== null) ? size : (roiSlider ? parseInt(roiSlider.value, 10) : 320);
+    if (roiValText) roiValText.textContent = `${curSize} px`;
+    if (viewfinderRoiBadge) viewfinderRoiBadge.textContent = `${curSize}px`;
+    
+    const currX = (ox !== undefined && ox !== null) ? ox : (roiOffsetXSlider ? parseInt(roiOffsetXSlider.value, 10) : 0);
+    const currY = (oy !== undefined && oy !== null) ? oy : (roiOffsetYSlider ? parseInt(roiOffsetYSlider.value, 10) : 0);
+    if (roiXText) roiXText.textContent = `${currX > 0 ? '+' : ''}${currX}px`;
+    if (roiYText) roiYText.textContent = `${currY > 0 ? '+' : ''}${currY}px`;
   }
 
-  function sendRoiUpdate(sizeVal) {
-    fetch('/api/roi_size', {
+  function triggerRoiSync() {
+    if (roiSyncInFlight) {
+      roiSyncPending = true;
+      return;
+    }
+
+    roiSyncInFlight = true;
+    roiSyncPending = false;
+
+    const curSize = roiSlider ? parseInt(roiSlider.value, 10) : 320;
+    const curX = roiOffsetXSlider ? parseInt(roiOffsetXSlider.value, 10) : 0;
+    const curY = roiOffsetYSlider ? parseInt(roiOffsetYSlider.value, 10) : 0;
+
+    fetch('/api/roi', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ roi_size: sizeVal })
+      body: JSON.stringify({ roi_size: curSize, offset_x: curX, offset_y: curY })
     })
     .then(res => res.json())
     .then(data => {
-      if (data.status === 'ok' && data.roi_size) {
-        updateRoiDisplay(data.roi_size);
+      roiSyncInFlight = false;
+      if (roiSyncPending) {
+        triggerRoiSync();
       }
     })
-    .catch(err => console.error('ROI update error:', err));
+    .catch(err => {
+      roiSyncInFlight = false;
+      console.error('ROI sync error:', err);
+    });
   }
 
   if (roiSlider) {
-    // Real-time smooth response while dragging (30ms throttled)
     roiSlider.addEventListener('input', (e) => {
       isRoiUserInteracting = true;
       lastRoiInteractionTime = Date.now();
-      const sizeVal = parseInt(e.target.value, 10);
-      updateRoiDisplay(sizeVal);
-
-      clearTimeout(roiDebounceTimer);
-      roiDebounceTimer = setTimeout(() => {
-        sendRoiUpdate(sizeVal);
-      }, 30);
+      const val = parseInt(e.target.value, 10);
+      if (roiValText) roiValText.textContent = `${val} px`;
+      if (viewfinderRoiBadge) viewfinderRoiBadge.textContent = `${val}px`;
+      triggerRoiSync();
     });
 
     roiSlider.addEventListener('change', (e) => {
-      const sizeVal = parseInt(e.target.value, 10);
       lastRoiInteractionTime = Date.now();
-      sendRoiUpdate(sizeVal);
+      const val = parseInt(e.target.value, 10);
+      if (roiValText) roiValText.textContent = `${val} px`;
+      if (viewfinderRoiBadge) viewfinderRoiBadge.textContent = `${val}px`;
+      triggerRoiSync();
       playTone(650, 0.04);
-      setTimeout(() => { 
-        isRoiUserInteracting = false; 
-      }, 800);
+      setTimeout(() => { isRoiUserInteracting = false; }, 1000);
     });
   }
 
-  // Preset Buttons (200px, 280px, 380px)
+  if (roiOffsetXSlider) {
+    roiOffsetXSlider.addEventListener('input', (e) => {
+      isRoiUserInteracting = true;
+      lastRoiInteractionTime = Date.now();
+      const val = parseInt(e.target.value, 10);
+      if (roiXText) roiXText.textContent = `${val > 0 ? '+' : ''}${val}px`;
+      triggerRoiSync();
+    });
+
+    roiOffsetXSlider.addEventListener('change', (e) => {
+      lastRoiInteractionTime = Date.now();
+      const val = parseInt(e.target.value, 10);
+      if (roiXText) roiXText.textContent = `${val > 0 ? '+' : ''}${val}px`;
+      triggerRoiSync();
+      playTone(620, 0.03);
+      setTimeout(() => { isRoiUserInteracting = false; }, 1000);
+    });
+  }
+
+  if (roiOffsetYSlider) {
+    roiOffsetYSlider.addEventListener('input', (e) => {
+      isRoiUserInteracting = true;
+      lastRoiInteractionTime = Date.now();
+      const val = parseInt(e.target.value, 10);
+      if (roiYText) roiYText.textContent = `${val > 0 ? '+' : ''}${val}px`;
+      triggerRoiSync();
+    });
+
+    roiOffsetYSlider.addEventListener('change', (e) => {
+      lastRoiInteractionTime = Date.now();
+      const val = parseInt(e.target.value, 10);
+      if (roiYText) roiYText.textContent = `${val > 0 ? '+' : ''}${val}px`;
+      triggerRoiSync();
+      playTone(620, 0.03);
+      setTimeout(() => { isRoiUserInteracting = false; }, 1000);
+    });
+  }
+
+  if (btnRoiCenter) {
+    btnRoiCenter.addEventListener('click', (e) => {
+      e.preventDefault();
+      isRoiUserInteracting = true;
+      lastRoiInteractionTime = Date.now();
+      if (roiOffsetXSlider) roiOffsetXSlider.value = 0;
+      if (roiOffsetYSlider) roiOffsetYSlider.value = 0;
+      if (roiXText) roiXText.textContent = '0px';
+      if (roiYText) roiYText.textContent = '0px';
+      triggerRoiSync();
+      playTone(850, 0.05);
+      setTimeout(() => {
+        isRoiUserInteracting = false;
+      }, 1000);
+    });
+  }
+
+  // Presets (180px, 320px, 500px, 700px)
   document.querySelectorAll('.chip-btn[data-roi]').forEach(chip => {
     chip.addEventListener('click', (e) => {
       e.preventDefault();
@@ -455,12 +534,13 @@
       isRoiUserInteracting = true;
       lastRoiInteractionTime = Date.now();
       if (roiSlider) roiSlider.value = sizeVal;
-      updateRoiDisplay(sizeVal);
-      sendRoiUpdate(sizeVal);
+      if (roiValText) roiValText.textContent = `${sizeVal} px`;
+      if (viewfinderRoiBadge) viewfinderRoiBadge.textContent = `${sizeVal}px`;
+      triggerRoiSync();
       playTone(680, 0.04);
-      setTimeout(() => { 
-        isRoiUserInteracting = false; 
-      }, 800);
+      setTimeout(() => {
+        isRoiUserInteracting = false;
+      }, 1000);
     });
   });
 
@@ -584,8 +664,23 @@
     if (roiSlider && !isRoiUserInteracting && (Date.now() - lastRoiInteractionTime > 1200) && data.roi_size) {
       if (parseInt(roiSlider.value, 10) !== data.roi_size) {
         roiSlider.value = data.roi_size;
-        updateRoiDisplay(data.roi_size);
       }
+    }
+
+    if (roiOffsetXSlider && !isRoiUserInteracting && (Date.now() - lastRoiInteractionTime > 1200) && data.roi_offset_x !== undefined) {
+      if (parseInt(roiOffsetXSlider.value, 10) !== data.roi_offset_x) {
+        roiOffsetXSlider.value = data.roi_offset_x;
+      }
+    }
+
+    if (roiOffsetYSlider && !isRoiUserInteracting && (Date.now() - lastRoiInteractionTime > 1200) && data.roi_offset_y !== undefined) {
+      if (parseInt(roiOffsetYSlider.value, 10) !== data.roi_offset_y) {
+        roiOffsetYSlider.value = data.roi_offset_y;
+      }
+    }
+
+    if (!isRoiUserInteracting && (Date.now() - lastRoiInteractionTime > 1200) && data.roi_size) {
+      updateRoiDisplay(data.roi_size, data.roi_offset_x, data.roi_offset_y);
     }
 
     if (cameraSourceSelect && !isSwitchingCamera && !cameraSourceSelect.matches(':focus') && data.camera_id) {
@@ -614,7 +709,7 @@
       if (fpsVal) fpsVal.textContent = '0.0 FPS';
       if (latencyVal) latencyVal.textContent = 'PAUSED';
       if (latencyTag) latencyTag.textContent = 'LATENCY: PAUSED';
-      if (cameraStatusTag) cameraStatusTag.textContent = 'CAMERA SENSOR OFFLINE · INSPECTION PAUSED';
+      if (cameraStatusTag) cameraStatusTag.textContent = '카메라 센서 일시 정지';
       if (modeVal && modeDot) {
         modeVal.textContent = 'PAUSED (STANDBY)';
         modeDot.className = 'status-dot amber';
@@ -632,14 +727,14 @@
       if (verdictIcon) verdictIcon.textContent = 'EN';
       if (verdictLabel) verdictLabel.textContent = `SAMPLE ENROLLMENT [${data.sample_count}/15]`;
       if (verdictSubtext) verdictSubtext.textContent = '정상 부품 데이터 수집 중 (카메라 중앙 정렬 후 [C] 클릭)';
-      if (cameraStatusTag) cameraStatusTag.textContent = `ENROLLMENT MODE · PRISTINE SAMPLES: ${data.sample_count}`;
+      if (cameraStatusTag) cameraStatusTag.textContent = `샘플 등록 모드 [${data.sample_count}/15]`;
     } else {
       if (!data.part_present) {
         if (verdictBanner) verdictBanner.className = 'verdict-banner standby';
         if (verdictIcon) verdictIcon.textContent = '--';
         if (verdictLabel) verdictLabel.textContent = 'AWAITING COMPONENT';
         if (verdictSubtext) verdictSubtext.textContent = '광학 검사 영역에 부품이 감지되면 즉시 분석합니다.';
-        if (cameraStatusTag) cameraStatusTag.textContent = 'ALIGNMENT GUIDE: 5mm LED / IC · STANDBY';
+        if (cameraStatusTag) cameraStatusTag.textContent = '광학 비전 대기 중';
         if (gaugeFillBar) gaugeFillBar.style.width = '0%';
         if (gaugeScoreText) gaugeScoreText.textContent = '0.0%';
         if (sideScoreVal) sideScoreVal.textContent = '0.0%';
@@ -649,7 +744,7 @@
           if (verdictIcon) verdictIcon.textContent = 'OK';
           if (verdictLabel) verdictLabel.textContent = 'PASS // 규격 적합 양품';
           if (verdictSubtext) verdictSubtext.textContent = `이상치 점수(${scorePct.toFixed(1)}%)가 관리 임계치(${thPct}%) 이내입니다.`;
-          if (cameraStatusTag) cameraStatusTag.textContent = 'OPTICAL ZONE ACTIVE · PASS (NORMAL)';
+          if (cameraStatusTag) cameraStatusTag.textContent = '정상 판정 (PASS)';
           if (lastVerdict !== 'PASS') {
             playTone(980, 0.08); // Confirmation chime
             lastVerdict = 'PASS';
@@ -659,7 +754,7 @@
           if (verdictIcon) verdictIcon.textContent = 'NG';
           if (verdictLabel) verdictLabel.textContent = 'REJECT // 이상치 결함 감지';
           if (verdictSubtext) verdictSubtext.textContent = `이상치 점수(${scorePct.toFixed(1)}%)가 임계치(${thPct}%)를 초과하여 선별 배출합니다.`;
-          if (cameraStatusTag) cameraStatusTag.textContent = 'OPTICAL ZONE ACTIVE · REJECT (DEFECT DETECTED)';
+          if (cameraStatusTag) cameraStatusTag.textContent = '이상 결함 감지 (REJECT)';
           if (lastVerdict !== 'FAIL') {
             playTone(320, 0.16, 'sawtooth'); // Defect warning tone
             lastVerdict = 'FAIL';

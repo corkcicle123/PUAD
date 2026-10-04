@@ -30,6 +30,8 @@ class CameraManager:
         self.target_width = target_width
         self.target_height = target_height
         self.roi_size = roi_size
+        self.roi_offset_x = 0
+        self.roi_offset_y = 0
         self.cap = None
 
     @property
@@ -104,15 +106,44 @@ class CameraManager:
 
     def get_roi_box(self, frame_shape):
         """
-        Calculates center ROI box (x1, y1, x2, y2) based on frame dimensions.
+        Calculates inspection zone ROI box (x1, y1, x2, y2) based on frame dimensions,
+        supporting screen-filling scale and 4-way (Left/Right/Up/Down) positional movement.
         """
         h, w = frame_shape[:2]
-        size = min(self.roi_size, min(h, w) - 40)
-        cx, cy = w // 2, h // 2
-        x1 = cx - size // 2
-        y1 = cy - size // 2
+        size = min(self.roi_size, min(h, w))
+
+        # Base center with X/Y directional offset
+        cx = (w // 2) + self.roi_offset_x
+        cy = (h // 2) + self.roi_offset_y
+
+        half = size // 2
+        x1 = cx - half
+        y1 = cy - half
         x2 = x1 + size
         y2 = y1 + size
+
+        # Soft clamp so box stays inside camera frame while allowing edge positioning
+        if x1 < 0:
+            shift = -x1
+            x1 = 0
+            x2 = min(w, x2 + shift)
+        if y1 < 0:
+            shift = -y1
+            y1 = 0
+            y2 = min(h, y2 + shift)
+        if x2 > w:
+            shift = x2 - w
+            x2 = w
+            x1 = max(0, x1 - shift)
+        if y2 > h:
+            shift = y2 - h
+            y2 = h
+            y1 = max(0, y1 - shift)
+
+        x1 = max(0, int(x1))
+        y1 = max(0, int(y1))
+        x2 = min(w, max(x1 + 10, int(x2)))
+        y2 = min(h, max(y1 + 10, int(y2)))
         return x1, y1, x2, y2
 
     def extract_roi(self, frame):
@@ -158,9 +189,19 @@ class CameraManager:
                 self._is_switching = False
 
     def set_roi_size(self, new_size):
-        """Dynamically adjusts inspection zone ROI box dimension."""
-        self.roi_size = max(100, min(640, int(new_size)))
-        return self.roi_size
+        """Dynamically adjusts inspection zone ROI dimension (up to full frame size)."""
+        with self._lock:
+            self.roi_size = max(80, min(1080, int(new_size)))
+            return self.roi_size
+
+    def set_roi_offset(self, offset_x=None, offset_y=None):
+        """Dynamically adjusts 4-directional (Left/Right, Up/Down) center offset."""
+        with self._lock:
+            if offset_x is not None:
+                self.roi_offset_x = max(-500, min(500, int(offset_x)))
+            if offset_y is not None:
+                self.roi_offset_y = max(-400, min(400, int(offset_y)))
+            return self.roi_offset_x, self.roi_offset_y
 
     @staticmethod
     def list_available_cameras(max_check=4):

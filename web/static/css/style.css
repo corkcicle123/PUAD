@@ -71,9 +71,9 @@
   --shadow-panel: 0 4px 12px rgba(0, 0, 0, 0.35);
   --shadow-active: 0 0 10px rgba(56, 189, 248, 0.25);
 
-  /* Fonts - Korean: 아리따 돋움, Roman/Latin: 아리따 LTN (Arita Sans) */
+  /* Fonts - Fully unified with Amorepacific Arita (Arita LTN for Latin/numbers, Arita Dotum for Korean) */
   --font-sans: 'Arita Sans', 'Arita LTN', 'Arita-dotum', 'ArittaDodum', 'Arita', -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', sans-serif;
-  --font-mono: 'Geist Mono', 'JetBrains Mono', 'SF Mono', Menlo, Consolas, monospace;
+  --font-mono: 'Arita Sans', 'Arita LTN', 'Arita-dotum', 'ArittaDodum', 'Arita', sans-serif;
 }
 
 /* ==========================================================================
@@ -130,12 +130,16 @@ body {
   background-color: var(--bg-app);
   color: var(--ink-secondary);
   font-family: var(--font-sans);
+  font-weight: 500; /* Step up base font weight by 1 step throughout the app */
   height: 100vh;
   width: 100vw;
   overflow: hidden; /* Fits in a single viewport without vertical scroll */
   display: flex;
   line-height: 1.4;
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
 }
 
 /* ==========================================================================
@@ -888,47 +892,71 @@ body {
 }
 
 .verdict-status-icon {
-  width: 38px;
-  height: 38px;
+  width: 44px;
+  height: 44px;
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-family: var(--font-mono);
-  font-weight: 700;
-  font-size: 0.95rem;
+  font-family: 'Arita Sans', 'Arita', var(--font-sans);
+  font-weight: 900; /* Ultra bold for instant glanceability */
+  font-size: 1.25rem;
+  letter-spacing: 0.5px;
   background: var(--bg-panel-elevated);
   border: 1px solid var(--border-subtle);
   color: var(--ink-muted);
+  -webkit-font-smoothing: antialiased;
+  -webkit-text-stroke: 0.35px currentColor;
 }
 
 .verdict-banner.pass .verdict-status-icon {
   background: var(--color-pass);
   color: #FFFFFF;
   border-color: var(--color-pass);
+  -webkit-text-stroke: 0.4px #FFFFFF;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.35);
 }
 
 .verdict-banner.fail .verdict-status-icon {
   background: var(--color-fail);
   color: #FFFFFF;
   border-color: var(--color-fail);
+  -webkit-text-stroke: 0.5px #FFFFFF;
+  box-shadow: 0 0 14px rgba(239, 68, 68, 0.45);
 }
 
 .verdict-banner.enroll .verdict-status-icon {
   background: var(--color-enroll);
   color: #FFFFFF;
   border-color: var(--color-enroll);
+  -webkit-text-stroke: 0.4px #FFFFFF;
 }
 
 .verdict-text-group h2 {
-  font-size: 1.05rem;
-  font-weight: 700;
+  font-size: 1.15rem;
+  font-weight: 800; /* Distinct bold title */
   color: var(--ink-primary);
+  letter-spacing: -0.2px;
+  line-height: 1.25;
 }
 
-.verdict-banner.pass .verdict-text-group h2 { color: #34D399; }
-.verdict-banner.fail .verdict-text-group h2 { color: #F87171; }
-.verdict-banner.enroll .verdict-text-group h2 { color: #A78BFA; }
+.verdict-banner.pass .verdict-text-group h2 {
+  color: #34D399;
+  font-weight: 850;
+  -webkit-text-stroke: 0.25px #34D399;
+}
+
+.verdict-banner.fail .verdict-text-group h2 {
+  color: #F87171;
+  font-weight: 900; /* Ultra heavy bold weight specifically for REJECT as requested */
+  -webkit-text-stroke: 0.4px #F87171;
+  text-shadow: 0 0 10px rgba(248, 113, 113, 0.35);
+}
+
+.verdict-banner.enroll .verdict-text-group h2 {
+  color: #A78BFA;
+  font-weight: 800;
+}
 
 .verdict-caption {
   font-size: 0.74rem;
@@ -1046,11 +1074,11 @@ body {
   white-space: nowrap;
 }
 
-/* Dual Tuning Sliders (Threshold & ROI Size) */
+/* Tuning Sliders Stack (Threshold on top, ROI Size & Position below) */
 .dual-slider-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
   background: var(--bg-input);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
@@ -1196,7 +1224,9 @@ body {
   padding: 6px 10px;
   border-bottom: 1px solid var(--border-subtle);
   color: var(--ink-secondary);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 
@@ -1206,7 +1236,7 @@ body {
   border-radius: 3px;
   font-size: 0.66rem;
   font-weight: 700;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
 }
 
 .badge-pill.pass {
@@ -1226,3 +1256,51 @@ body {
   color: var(--ink-accent);
   border: 1px solid rgba(56, 189, 248, 0.3);
 }
+
+/* ==========================================================================
+   Streamlined ROI 2-Axis Position Tuning
+   ========================================================================== */
+.roi-pos-streamlined {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: var(--bg-panel-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin-top: 6px;
+}
+
+.roi-axis-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.slider-label-row.sub {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--ink-muted);
+}
+
+.slider-num-pill.mini {
+  font-size: 0.68rem;
+  padding: 0 5px;
+  line-height: 1.3;
+}
+
+.reset-pos-chip {
+  align-self: flex-start;
+  margin-top: 3px;
+  font-size: 0.68rem;
+  padding: 3px 8px;
+  background: var(--bg-panel-subtle);
+  color: var(--ink-secondary);
+}
+
+.reset-pos-chip:hover {
+  background: var(--color-brand-subtle);
+  color: var(--ink-accent);
+  border-color: var(--color-brand);
+}
+

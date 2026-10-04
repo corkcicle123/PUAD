@@ -47,6 +47,15 @@ os.makedirs("data/models", exist_ok=True)
 app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
+@app.middleware("http")
+async def add_no_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    if request.url.path.startswith("/static"):
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 class SystemState:
     def __init__(self):
         self.model_path = "data/models/patchcore_led.pkl"
@@ -271,40 +280,39 @@ def generate_mjpeg_stream(stream_type="main"):
                     h, w = frame.shape[:2]
                     x1, y1, x2, y2 = state.cam.get_roi_box((h, w)) if state.cam else (w//2-140, h//2-140, w//2+140, h//2+140)
                     
-                    status_color = (255, 140, 0) # Commercial Cyan / Deep Blue in BGR
+                    # Industrial status color in BGR
+                    # Standby: High-contrast Ice Cyan (255, 195, 30) | Normal: Optical Emerald (30, 225, 60) | Anomaly: Alert Red (30, 30, 255)
+                    status_color = (255, 195, 30)
                     if state.mode == "INSPECT":
                         if not state.part_present:
-                            status_color = (180, 170, 160) # Standby slate
+                            status_color = (200, 180, 150) # Precision Standby Slate
                         elif state.current_verdict == "FAIL":
-                            status_color = (40, 40, 240)   # Vivid fail red
+                            status_color = (30, 30, 255)   # Vivid Alert Red
                         else:
-                            status_color = (60, 210, 60)   # Vivid pass green
+                            status_color = (30, 225, 60)   # Optical Emerald
                     
-                    # ROI border
-                    cv2.rectangle(frame, (x1, y1), (x2, y2), status_color, 2)
+                    # 1. Bolder boundary frame (2px thickness, high visibility)
+                    cv2.rectangle(frame, (x1, y1), (x2, y2), status_color, 2, cv2.LINE_AA)
                     
-                    # Corner brackets
-                    c_len = 20
-                    cv2.line(frame, (x1, y1), (x1 + c_len, y1), status_color, 3)
-                    cv2.line(frame, (x1, y1), (x1, y1 + c_len), status_color, 3)
-                    cv2.line(frame, (x2, y1), (x2 - c_len, y1), status_color, 3)
-                    cv2.line(frame, (x2, y1), (x2, y1 + c_len), status_color, 3)
-                    cv2.line(frame, (x1, y2), (x1 + c_len, y2), status_color, 3)
-                    cv2.line(frame, (x1, y2), (x1, y2 - c_len), status_color, 3)
-                    cv2.line(frame, (x2, y2), (x2 - c_len, y2), status_color, 3)
-                    cv2.line(frame, (x2, y2), (x2, y2 - c_len), status_color, 3)
+                    # 2. Precision Corner Brackets (4px heavy thickness for high visibility)
+                    c_len = max(24, min(42, (x2 - x1) // 5))
+                    # Top-Left
+                    cv2.line(frame, (x1, y1), (x1 + c_len, y1), status_color, 4, cv2.LINE_AA)
+                    cv2.line(frame, (x1, y1), (x1, y1 + c_len), status_color, 4, cv2.LINE_AA)
+                    # Top-Right
+                    cv2.line(frame, (x2, y1), (x2 - c_len, y1), status_color, 4, cv2.LINE_AA)
+                    cv2.line(frame, (x2, y1), (x2, y1 + c_len), status_color, 4, cv2.LINE_AA)
+                    # Bottom-Left
+                    cv2.line(frame, (x1, y2), (x1 + c_len, y2), status_color, 4, cv2.LINE_AA)
+                    cv2.line(frame, (x1, y2), (x1, y2 - c_len), status_color, 4, cv2.LINE_AA)
+                    # Bottom-Right
+                    cv2.line(frame, (x2, y2), (x2 - c_len, y2), status_color, 4, cv2.LINE_AA)
+                    cv2.line(frame, (x2, y2), (x2, y2 - c_len), status_color, 4, cv2.LINE_AA)
                     
-                    # Center crosshair
+                    # 3. Center reticle (2px thickness, 12px cross)
                     cx, cy = (x1 + x2) // 2, (y1 + y2) // 2
-                    cv2.drawMarker(frame, (cx, cy), status_color, cv2.MARKER_CROSS, 14, 1)
-                    
-                    # Status text & Dimension Display
-                    status_msg = "PART DETECTED" if state.part_present else "WAITING FOR PART"
-                    dim_str = f"{x2 - x1}x{y2 - y1}px"
-                    cv2.putText(frame, f"INSPECTION ZONE [{dim_str}] [{status_msg}]", (x1, max(24, y1 - 10)),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.48, status_color, 1, cv2.LINE_AA)
-                    cv2.putText(frame, dim_str, (max(10, x2 - 75), min(h - 8, y2 + 18)),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.42, status_color, 1, cv2.LINE_AA)
+                    cv2.line(frame, (cx - 6, cy), (cx + 6, cy), status_color, 2, cv2.LINE_AA)
+                    cv2.line(frame, (cx, cy - 6), (cx, cy + 6), status_color, 2, cv2.LINE_AA)
                                 
             elif stream_type == "roi":
                 frame = state.latest_roi_frame
@@ -312,9 +320,6 @@ def generate_mjpeg_stream(stream_type="main"):
                     frame = np.full((280, 280, 3), 20, dtype=np.uint8)
                 else:
                     frame = frame.copy()
-                    h_roi, w_roi = frame.shape[:2]
-                    cv2.putText(frame, f"ROI: {w_roi}x{h_roi}px", (10, 24),
-                                cv2.FONT_HERSHEY_SIMPLEX, 0.50, (0, 220, 255), 1, cv2.LINE_AA)
             elif stream_type == "heatmap":
                 frame = state.latest_heatmap_frame
                 if frame is None:
@@ -424,22 +429,33 @@ async def api_trigger():
     return {"status": "ok"}
 
 class RoiPayload(BaseModel):
-    roi_size: int
+    roi_size: Optional[int] = None
+    offset_x: Optional[int] = None
+    offset_y: Optional[int] = None
 
 class CameraPayload(BaseModel):
     source: str
 
 @app.post("/api/roi_size")
-async def api_roi_size(payload: RoiPayload):
+@app.post("/api/roi")
+async def api_roi_adjust(payload: RoiPayload):
     if state.cam:
-        new_size = state.cam.set_roi_size(payload.roi_size)
+        if payload.roi_size is not None:
+            state.cam.set_roi_size(payload.roi_size)
+        if payload.offset_x is not None or payload.offset_y is not None:
+            state.cam.set_roi_offset(payload.offset_x, payload.offset_y)
+
         if state.latest_raw_frame is not None:
             try:
                 state.latest_roi_frame = state.cam.extract_roi(state.latest_raw_frame)
             except Exception:
                 pass
-        state.add_log(f"Inspection Zone ROI resized to {new_size}px")
-        return {"status": "ok", "roi_size": new_size}
+        return {
+            "status": "ok",
+            "roi_size": state.cam.roi_size,
+            "offset_x": getattr(state.cam, 'roi_offset_x', 0),
+            "offset_y": getattr(state.cam, 'roi_offset_y', 0)
+        }
     return {"status": "error", "message": "Camera not active"}
 
 @app.post("/api/camera")
@@ -513,6 +529,8 @@ async def api_status():
         "fps": round(state.current_fps, 1),
         "latency_ms": round(state.last_latency, 1),
         "roi_size": state.cam.roi_size if state.cam else 280,
+        "roi_offset_x": getattr(state.cam, 'roi_offset_x', 0) if state.cam else 0,
+        "roi_offset_y": getattr(state.cam, 'roi_offset_y', 0) if state.cam else 0,
         "camera_id": str(state.cam.camera_id) if state.cam else "0",
         "arduino_connected": state.arduino.is_connected,
         "is_paused": state.is_paused,
@@ -543,6 +561,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 "fps": round(state.current_fps, 1),
                 "latency_ms": round(state.last_latency, 1),
                 "roi_size": state.cam.roi_size if state.cam else 280,
+                "roi_offset_x": getattr(state.cam, 'roi_offset_x', 0) if state.cam else 0,
+                "roi_offset_y": getattr(state.cam, 'roi_offset_y', 0) if state.cam else 0,
                 "camera_id": str(state.cam.camera_id) if state.cam else "0",
                 "arduino_connected": state.arduino.is_connected,
                 "is_paused": state.is_paused,
