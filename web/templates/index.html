@@ -297,11 +297,53 @@
           <div class="card-title-row">
             <div class="card-title-text">
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="20" x2="18" y2="10"/>
-                <line x1="12" y1="20" x2="12" y2="4"/>
-                <line x1="6" y1="20" x2="6" y2="14"/>
+                <circle cx="12" cy="12" r="10"/>
+                <polyline points="12 6 12 12 16 14"/>
               </svg>
-              <span>이상치 점수 및 지능형 임계치 제어</span>
+              <span>정밀 검사 시점</span>
+            </div>
+            <div class="snapshot-header-meta">
+              <span class="snapshot-time-badge" id="snapshot-time-badge">대기 중 (SPACE 검사)</span>
+              <span class="snapshot-verdict-pill waiting" id="snapshot-verdict-pill">READY</span>
+            </div>
+          </div>
+
+          <!-- Compact Horizontal Space-Inspection Thumbnails Strip -->
+          <div class="space-snapshot-strip" id="space-snapshot-strip">
+            <div class="snapshot-thumb-card" id="thumb-card-roi" title="스페이스 검사 원본 인스펙션존 (클릭 시 확대)">
+              <div class="thumb-header">
+                <span class="thumb-tag">인스펙션존 (RAW)</span>
+              </div>
+              <div class="thumb-img-wrap">
+                <img id="thumb-roi-img" src="" alt="인스펙션존 원본" style="display:none;" />
+                <div id="thumb-roi-placeholder" class="thumb-placeholder">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" opacity="0.6">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                    <circle cx="8.5" cy="8.5" r="1.5"/>
+                    <polyline points="21 15 16 10 5 21"/>
+                  </svg>
+                  <span>검사 대기</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="snapshot-thumb-card" id="thumb-card-heat" title="스페이스 검사 결함 히트맵 (클릭 시 확대)">
+              <div class="thumb-header">
+                <span class="thumb-tag">이상치 히트맵</span>
+              </div>
+              <div class="thumb-img-wrap">
+                <img id="thumb-heatmap-img" src="" alt="이상치 히트맵" style="display:none;" />
+                <div id="thumb-heat-placeholder" class="thumb-placeholder">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" opacity="0.6">
+                    <circle cx="12" cy="12" r="8"/>
+                    <line x1="12" y1="2" x2="12" y2="4"/>
+                    <line x1="12" y1="20" x2="12" y2="22"/>
+                    <line x1="2" y1="12" x2="4" y2="12"/>
+                    <line x1="20" y1="12" x2="22" y2="12"/>
+                  </svg>
+                  <span>검사 대기</span>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -482,9 +524,20 @@
       </div>
 
       <div class="inspection-modal-body">
-        <div class="modal-image-container">
-          <img src="" alt="검사 시점 히트맵 스틸사진" id="modal-snapshot-img" class="modal-snapshot-img">
-          <div class="modal-image-watermark" id="modal-watermark">SNAPSHOT // SPACE TRIGGERED</div>
+        <div class="modal-dual-image-grid">
+          <div class="modal-image-col">
+            <div class="modal-col-tag">인스펙션존 (RAW)</div>
+            <div class="modal-image-container">
+              <img src="" alt="인스펙션존 원본" id="modal-roi-img" class="modal-snapshot-img">
+            </div>
+          </div>
+          <div class="modal-image-col">
+            <div class="modal-col-tag">이상치 히트맵 (HEATMAP)</div>
+            <div class="modal-image-container">
+              <img src="" alt="검사 시점 히트맵 스틸사진" id="modal-snapshot-img" class="modal-snapshot-img">
+              <div class="modal-image-watermark" id="modal-watermark">SNAPSHOT // SPACE TRIGGERED</div>
+            </div>
+          </div>
         </div>
 
         <div class="modal-meta-grid">
@@ -514,6 +567,6 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=20261004_v26"></script>
+  <script src="/static/js/app.js?v=20261004_v27"></script>
 </body>
 </html>

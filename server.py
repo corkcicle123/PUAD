@@ -88,7 +88,9 @@ class SystemState:
         os.makedirs(self.inspections_dir, exist_ok=True)
         self.inspection_history = []
         self.inspection_images = {}
+        self.roi_images = {}
         self.inspection_counter = 0
+        self.latest_inspection = None
         
         # Frames
         self.latest_raw_frame = None
@@ -228,12 +230,22 @@ def vision_worker():
                         state.pass_count += 1
                         state.arduino.send_verdict("PASS")
 
-                    # Capture & Persist Still Inspection Heatmap Photo
+                    # Capture & Persist Still Inspection Heatmap Photo & Raw ROI Crop
                     state.inspection_counter += 1
                     rec_id = state.inspection_counter
                     now_time = time.strftime("%H:%M:%S")
                     now_date = time.strftime("%Y-%m-%d")
 
+                    # 1) Raw Inspection Zone (ROI) Crop
+                    ret_enc_roi, roi_buf = cv2.imencode('.jpg', inspect_target, [cv2.IMWRITE_JPEG_QUALITY, 85])
+                    b64_roi = ""
+                    if ret_enc_roi:
+                        roi_bytes = roi_buf.tobytes()
+                        state.roi_images[rec_id] = roi_bytes
+                        import base64
+                        b64_roi = f"data:image/jpeg;base64,{base64.b64encode(roi_bytes).decode('ascii')}"
+
+                    # 2) Defect Heatmap Still Frame
                     still_frame = state.latest_heatmap_frame.copy()
                     ret_enc, img_buf = cv2.imencode('.jpg', still_frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
                     b64_img = ""
@@ -259,12 +271,16 @@ def vision_worker():
                         "threshold": round(state.detector.threshold * 100, 1),
                         "image_url": f"/api/inspection_image/{rec_id}",
                         "image_data": b64_img,
+                        "roi_url": f"/api/roi_image/{rec_id}",
+                        "roi_data": b64_roi,
                         "detail": f"검사 판정: {state.current_verdict} (이상치: {(live_score*100):.1f}%)"
                     }
+                    state.latest_inspection = record
                     state.inspection_history.append(record)
                     if len(state.inspection_history) > 30:
                         old_rec = state.inspection_history.pop(0)
                         state.inspection_images.pop(old_rec["id"], None)
+                        state.roi_images.pop(old_rec["id"], None)
 
                     state.add_log(f"검사 판정: {state.current_verdict} (이상치: {(live_score*100):.1f}%) [스틸사진 #{rec_id}]")
 
@@ -478,6 +494,8 @@ async def api_reset():
     state.current_verdict = "WAITING"
     state.inspection_history = []
     state.inspection_images.clear()
+    state.roi_images.clear()
+    state.latest_inspection = None
     state.inspection_counter = 0
     if os.path.exists(state.inspections_dir):
         for f in os.listdir(state.inspections_dir):
@@ -510,6 +528,13 @@ async def api_inspection_image(record_id: int):
     if os.path.exists(img_path):
         return FileResponse(img_path, media_type="image/jpeg", headers=headers)
     raise HTTPException(status_code=404, detail="Inspection image not found")
+
+@app.get("/api/roi_image/{record_id}")
+async def api_roi_image(record_id: int):
+    headers = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
+    if record_id in state.roi_images:
+        return Response(content=state.roi_images[record_id], media_type="image/jpeg", headers=headers)
+    raise HTTPException(status_code=404, detail="Inspection ROI image not found")
 
 class RoiPayload(BaseModel):
     roi_size: Optional[int] = None
@@ -620,6 +645,7 @@ async def api_status():
         "arduino_connected": state.arduino.is_connected,
         "is_paused": state.is_paused,
         "logs": state.logs,
+        "latest_inspection": state.latest_inspection,
         "inspections": state.inspection_history[-10:]
     }
 
@@ -655,6 +681,7 @@ async def websocket_endpoint(websocket: WebSocket):
                 "arduino_connected": state.arduino.is_connected,
                 "is_paused": state.is_paused,
                 "logs": state.logs,
+                "latest_inspection": state.latest_inspection,
                 "inspections": state.inspection_history[-10:]
             }
             await websocket.send_json(data)

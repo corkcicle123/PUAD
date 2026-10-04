@@ -81,12 +81,23 @@
   const statLatency = document.getElementById('stat-latency');
   const auditLogBody = document.getElementById('audit-log-body');
 
+  // Space Inspection Snapshot Strip Elements
+  const snapshotTimeBadge = document.getElementById('snapshot-time-badge');
+  const snapshotVerdictPill = document.getElementById('snapshot-verdict-pill');
+  const thumbCardRoi = document.getElementById('thumb-card-roi');
+  const thumbCardHeat = document.getElementById('thumb-card-heat');
+  const thumbRoiImg = document.getElementById('thumb-roi-img');
+  const thumbRoiPlaceholder = document.getElementById('thumb-roi-placeholder');
+  const thumbHeatmapImg = document.getElementById('thumb-heatmap-img');
+  const thumbHeatPlaceholder = document.getElementById('thumb-heat-placeholder');
+
   // Inspection Snapshot Modal Elements
   const inspectionModal = document.getElementById('inspection-modal');
   const modalCloseBtn = document.getElementById('modal-close-btn');
   const modalDoneBtn = document.getElementById('modal-done-btn');
   const modalTitle = document.getElementById('modal-title');
   const modalVerdictBadge = document.getElementById('modal-verdict-badge');
+  const modalRoiImg = document.getElementById('modal-roi-img');
   const modalSnapshotImg = document.getElementById('modal-snapshot-img');
   const modalTimeVal = document.getElementById('modal-time-val');
   const modalVerdictVal = document.getElementById('modal-verdict-val');
@@ -819,6 +830,13 @@
     if (statDefect) statDefect.textContent = data.fail_count;
     if (statRate) statRate.textContent = `${data.defect_rate.toFixed(1)}% DEFECT`;
 
+    // 5-B. Update Space Inspection Horizontal Snapshot Strip
+    if (data.latest_inspection) {
+      updateLatestInspectionSnapshot(data.latest_inspection);
+    } else if (data.inspections && data.inspections.length > 0) {
+      updateLatestInspectionSnapshot(data.inspections[data.inspections.length - 1]);
+    }
+
     // 6. Audit Trail Logs & Still Snapshot History (Anti-Flicker Cached)
     if (data.inspections && data.inspections.length > 0) {
       renderInspectionHistory(data.inspections);
@@ -932,13 +950,84 @@
     });
   }
 
+  // ------------------------------------------------------------------------
+  // Space Inspection Snapshot Strip (Horizontal ROI & Heatmap Preview)
+  // ------------------------------------------------------------------------
+  let currentLatestInspectionId = null;
+  let latestInspectionRecord = null;
+
+  function updateLatestInspectionSnapshot(latest) {
+    if (!latest) {
+      if (snapshotTimeBadge) snapshotTimeBadge.textContent = '대기 중 (SPACE 검사)';
+      if (snapshotVerdictPill) {
+        snapshotVerdictPill.className = 'snapshot-verdict-pill waiting';
+        snapshotVerdictPill.textContent = 'READY';
+      }
+      if (thumbRoiImg) thumbRoiImg.style.display = 'none';
+      if (thumbRoiPlaceholder) thumbRoiPlaceholder.style.display = 'flex';
+      if (thumbHeatmapImg) thumbHeatmapImg.style.display = 'none';
+      if (thumbHeatPlaceholder) thumbHeatPlaceholder.style.display = 'flex';
+      return;
+    }
+
+    latestInspectionRecord = latest;
+
+    if (latest.id !== currentLatestInspectionId) {
+      currentLatestInspectionId = latest.id;
+
+      // 1) Time & Verdict badge
+      if (snapshotTimeBadge) {
+        snapshotTimeBadge.textContent = `${latest.time || ''} (#${latest.id})`;
+      }
+      if (snapshotVerdictPill) {
+        const isPass = (latest.verdict === 'PASS');
+        snapshotVerdictPill.className = `snapshot-verdict-pill ${isPass ? 'pass' : 'fail'}`;
+        snapshotVerdictPill.textContent = latest.verdict;
+      }
+
+      // 2) Raw ROI Thumbnail
+      const roiSrc = latest.roi_data || (latest.roi_url ? `${latest.roi_url}?t=${Date.now()}` : '');
+      if (thumbRoiImg && roiSrc) {
+        thumbRoiImg.src = roiSrc;
+        thumbRoiImg.style.display = 'block';
+        if (thumbRoiPlaceholder) thumbRoiPlaceholder.style.display = 'none';
+      }
+
+      // 3) Defect Heatmap Thumbnail
+      const heatSrc = latest.image_data || (latest.image_url ? `${latest.image_url}?t=${Date.now()}` : '');
+      if (thumbHeatmapImg && heatSrc) {
+        thumbHeatmapImg.src = heatSrc;
+        thumbHeatmapImg.style.display = 'block';
+        if (thumbHeatPlaceholder) thumbHeatPlaceholder.style.display = 'none';
+      }
+    }
+  }
+
+  if (thumbCardRoi) {
+    thumbCardRoi.addEventListener('click', () => {
+      if (latestInspectionRecord) {
+        openInspectionModal(latestInspectionRecord);
+      }
+    });
+  }
+  if (thumbCardHeat) {
+    thumbCardHeat.addEventListener('click', () => {
+      if (latestInspectionRecord) {
+        openInspectionModal(latestInspectionRecord);
+      }
+    });
+  }
+
   function openInspectionModal(record) {
     if (!inspectionModal) return;
-    if (modalTitle) modalTitle.textContent = `검사 기록 [#${record.id}] 스틸사진 상세`;
+    if (modalTitle) modalTitle.textContent = `검사 기록 [#${record.id}] 상세 뷰`;
     if (modalVerdictBadge) {
       const isPass = (record.verdict === 'PASS');
       modalVerdictBadge.className = `badge-pill ${isPass ? 'pass' : 'fail'}`;
       modalVerdictBadge.textContent = record.verdict;
+    }
+    if (modalRoiImg) {
+      modalRoiImg.src = record.roi_data || (record.roi_url ? `${record.roi_url}?t=${Date.now()}` : record.image_data || record.image_url);
     }
     if (modalSnapshotImg) {
       modalSnapshotImg.src = record.image_data || `${record.image_url}?t=${Date.now()}`;
