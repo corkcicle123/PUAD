@@ -958,11 +958,7 @@
 
   function updateLatestInspectionSnapshot(latest) {
     if (!latest) {
-      if (snapshotTimeBadge) snapshotTimeBadge.textContent = '대기 중 (SPACE 검사)';
-      if (snapshotVerdictPill) {
-        snapshotVerdictPill.className = 'snapshot-verdict-pill waiting';
-        snapshotVerdictPill.textContent = 'READY';
-      }
+      if (snapshotTimeBadge) snapshotTimeBadge.textContent = '--:--:--';
       if (thumbRoiImg) thumbRoiImg.style.display = 'none';
       if (thumbRoiPlaceholder) thumbRoiPlaceholder.style.display = 'flex';
       if (thumbHeatmapImg) thumbHeatmapImg.style.display = 'none';
@@ -975,14 +971,9 @@
     if (latest.id !== currentLatestInspectionId) {
       currentLatestInspectionId = latest.id;
 
-      // 1) Time & Verdict badge
+      // 1) 초단위 검사시간 (e.g. 22:04:12)
       if (snapshotTimeBadge) {
-        snapshotTimeBadge.textContent = `${latest.time || ''} (#${latest.id})`;
-      }
-      if (snapshotVerdictPill) {
-        const isPass = (latest.verdict === 'PASS');
-        snapshotVerdictPill.className = `snapshot-verdict-pill ${isPass ? 'pass' : 'fail'}`;
-        snapshotVerdictPill.textContent = latest.verdict;
+        snapshotTimeBadge.textContent = latest.time || '--:--:--';
       }
 
       // 2) Raw ROI Thumbnail

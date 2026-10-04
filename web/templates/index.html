@@ -294,56 +294,23 @@
 
         <!-- Gauge & Dual Tuning Controls (Threshold & ROI Size) -->
         <div class="intel-card">
-          <div class="card-title-row">
-            <div class="card-title-text">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <polyline points="12 6 12 12 16 14"/>
-              </svg>
-              <span>정밀 검사 시점</span>
-            </div>
-            <div class="snapshot-header-meta">
-              <span class="snapshot-time-badge" id="snapshot-time-badge">대기 중 (SPACE 검사)</span>
-              <span class="snapshot-verdict-pill waiting" id="snapshot-verdict-pill">READY</span>
-            </div>
-          </div>
-
-          <!-- Compact Horizontal Space-Inspection Thumbnails Strip -->
+          <!-- Compact Single-Row Strip: [검사시간 | RAW | 히트맵] -->
           <div class="space-snapshot-strip" id="space-snapshot-strip">
-            <div class="snapshot-thumb-card" id="thumb-card-roi" title="스페이스 검사 원본 인스펙션존 (클릭 시 확대)">
-              <div class="thumb-header">
-                <span class="thumb-tag">인스펙션존 (RAW)</span>
-              </div>
-              <div class="thumb-img-wrap">
-                <img id="thumb-roi-img" src="" alt="인스펙션존 원본" style="display:none;" />
-                <div id="thumb-roi-placeholder" class="thumb-placeholder">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" opacity="0.6">
-                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
-                    <circle cx="8.5" cy="8.5" r="1.5"/>
-                    <polyline points="21 15 16 10 5 21"/>
-                  </svg>
-                  <span>검사 대기</span>
-                </div>
-              </div>
+            <div class="snapshot-time-box" id="snapshot-time-box" title="스페이스 검사 시각">
+              <span class="time-box-label">검사시간</span>
+              <span class="time-box-val" id="snapshot-time-badge">--:--:--</span>
             </div>
 
-            <div class="snapshot-thumb-card" id="thumb-card-heat" title="스페이스 검사 결함 히트맵 (클릭 시 확대)">
-              <div class="thumb-header">
-                <span class="thumb-tag">이상치 히트맵</span>
-              </div>
-              <div class="thumb-img-wrap">
-                <img id="thumb-heatmap-img" src="" alt="이상치 히트맵" style="display:none;" />
-                <div id="thumb-heat-placeholder" class="thumb-placeholder">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" opacity="0.6">
-                    <circle cx="12" cy="12" r="8"/>
-                    <line x1="12" y1="2" x2="12" y2="4"/>
-                    <line x1="12" y1="20" x2="12" y2="22"/>
-                    <line x1="2" y1="12" x2="4" y2="12"/>
-                    <line x1="20" y1="12" x2="22" y2="12"/>
-                  </svg>
-                  <span>검사 대기</span>
-                </div>
-              </div>
+            <div class="snapshot-thumb-card" id="thumb-card-roi" title="RAW 썸네일 (클릭 시 확대)">
+              <img id="thumb-roi-img" src="" alt="RAW" style="display:none;" />
+              <div id="thumb-roi-placeholder" class="thumb-mini-label">RAW</div>
+              <span class="thumb-corner-tag">RAW</span>
+            </div>
+
+            <div class="snapshot-thumb-card" id="thumb-card-heat" title="히트맵 썸네일 (클릭 시 확대)">
+              <img id="thumb-heatmap-img" src="" alt="히트맵" style="display:none;" />
+              <div id="thumb-heat-placeholder" class="thumb-mini-label">히트맵</div>
+              <span class="thumb-corner-tag">히트맵</span>
             </div>
           </div>
 
@@ -567,6 +534,6 @@
     </div>
   </div>
 
-  <script src="/static/js/app.js?v=20261004_v27"></script>
+  <script src="/static/js/app.js?v=20261004_v28"></script>
 </body>
 </html>
