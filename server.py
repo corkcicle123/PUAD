@@ -6,8 +6,8 @@ import threading
 import cv2
 import numpy as np
 from typing import Optional
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request
-from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect, Request, Response, HTTPException
+from fastapi.responses import StreamingResponse, HTMLResponse, JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import BaseModel
@@ -80,6 +80,13 @@ class SystemState:
         self.part_present = False
         self.is_paused = False
         self.logs = ["AI Machine Vision Server initialized. Ready."]
+        
+        # Inspection History & Still Snapshots
+        self.inspections_dir = "data/inspections"
+        os.makedirs(self.inspections_dir, exist_ok=True)
+        self.inspection_history = []
+        self.inspection_images = {}
+        self.inspection_counter = 0
         
         # Frames
         self.latest_raw_frame = None
@@ -179,6 +186,22 @@ def vision_worker():
             if state.mode == "INSPECT":
                 inspect_target = comp_crop if (is_present and comp_crop is not None) else roi
 
+                # Continuous Real-Time Live Inference & Heatmap Generation (Live 3-Screen Feed)
+                t0 = time.time()
+                res = state.detector.predict(inspect_target)
+                state.last_latency = (time.time() - t0) * 1000
+                state.pred_result = res
+
+                # Real-Time Heatmap Blending (Always active in live video stream!)
+                norm_map = res['anomaly_map']
+                heatmap_raw = np.uint8(255 * norm_map)
+                heatmap_color = cv2.applyColorMap(heatmap_raw, cv2.COLORMAP_JET)
+                state.latest_heatmap_frame = cv2.addWeighted(inspect_target, 0.55, heatmap_color, 0.45, 0)
+
+                live_score = res['anomaly_score']
+                is_anomaly = res['is_anomaly']
+
+                # Trigger Inspection Event on Space key (or manual/auto trigger)
                 trigger_inspection = False
                 if state.manual_trigger_pending:
                     trigger_inspection = True
@@ -190,19 +213,7 @@ def vision_worker():
                         state.comp_detector.inspected_current_part = True
 
                 if trigger_inspection:
-                    t0 = time.time()
-                    res = state.detector.predict(inspect_target)
-                    state.last_latency = (time.time() - t0) * 1000
-                    state.pred_result = res
-
-                    # Generate Continuous / Inspected Heatmap
-                    norm_map = res['anomaly_map']
-                    heatmap_raw = np.uint8(255 * norm_map)
-                    heatmap_color = cv2.applyColorMap(heatmap_raw, cv2.COLORMAP_JET)
-                    state.latest_heatmap_frame = cv2.addWeighted(inspect_target, 0.55, heatmap_color, 0.45, 0)
-
-                    state.current_score = res['anomaly_score']
-                    is_anomaly = res['is_anomaly']
+                    state.current_score = live_score
                     state.current_verdict = "FAIL" if is_anomaly else "PASS"
 
                     state.total_tested += 1
@@ -213,17 +224,51 @@ def vision_worker():
                         state.pass_count += 1
                         state.arduino.send_verdict("PASS")
 
-                    state.add_log(f"검사 판정: {state.current_verdict} (이상치 점수: {(state.current_score*100):.1f}%)")
+                    # Capture & Persist Still Inspection Heatmap Photo
+                    state.inspection_counter += 1
+                    rec_id = state.inspection_counter
+                    now_time = time.strftime("%H:%M:%S")
+                    now_date = time.strftime("%Y-%m-%d")
+
+                    still_frame = state.latest_heatmap_frame.copy()
+                    ret_enc, img_buf = cv2.imencode('.jpg', still_frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+                    if ret_enc:
+                        img_bytes = img_buf.tobytes()
+                        state.inspection_images[rec_id] = img_bytes
+                        try:
+                            img_path = os.path.join(state.inspections_dir, f"insp_{rec_id:04d}.jpg")
+                            with open(img_path, "wb") as f:
+                                f.write(img_bytes)
+                        except Exception:
+                            pass
+
+                    record = {
+                        "id": rec_id,
+                        "time": now_time,
+                        "date": now_date,
+                        "event": "QC_INSPECT",
+                        "verdict": state.current_verdict,
+                        "score": round(live_score * 100, 1),
+                        "threshold": round(state.detector.threshold * 100, 1),
+                        "image_url": f"/api/inspection_image/{rec_id}",
+                        "detail": f"검사 판정: {state.current_verdict} (이상치: {(live_score*100):.1f}%)"
+                    }
+                    state.inspection_history.append(record)
+                    if len(state.inspection_history) > 30:
+                        old_rec = state.inspection_history.pop(0)
+                        state.inspection_images.pop(old_rec["id"], None)
+
+                    state.add_log(f"검사 판정: {state.current_verdict} (이상치: {(live_score*100):.1f}%) [스틸사진 #{rec_id}]")
+
                 elif not is_present:
                     # Empty inspection zone: Neutral standby display
                     state.current_score = 0.0
                     state.current_verdict = "WAITING"
-                    state.latest_heatmap_frame = None
                     state.comp_detector.inspected_current_part = False
                 elif state.current_verdict not in ["PASS", "FAIL"]:
                     # Part is present, awaiting Space key trigger
                     state.current_verdict = "READY"
-                    state.current_score = 0.0
+                    state.current_score = live_score
 
             elif state.mode == "ENROLL":
                 state.current_verdict = "ENROLL"
@@ -421,6 +466,16 @@ async def api_reset():
     state.fail_count = 0
     state.current_score = 0.0
     state.current_verdict = "WAITING"
+    state.inspection_history = []
+    state.inspection_images.clear()
+    state.inspection_counter = 0
+    if os.path.exists(state.inspections_dir):
+        for f in os.listdir(state.inspections_dir):
+            if f.endswith('.jpg') or f.endswith('.png'):
+                try:
+                    os.remove(os.path.join(state.inspections_dir, f))
+                except Exception:
+                    pass
     state.add_log("Reset all sample data. Ready for fresh Enrollment (Press C).")
     return {"status": "ok"}
 
@@ -435,6 +490,15 @@ async def api_threshold(payload: ThresholdPayload):
 async def api_trigger():
     state.manual_trigger_pending = True
     return {"status": "ok"}
+
+@app.get("/api/inspection_image/{record_id}")
+async def api_inspection_image(record_id: int):
+    if record_id in state.inspection_images:
+        return Response(content=state.inspection_images[record_id], media_type="image/jpeg")
+    img_path = os.path.join(state.inspections_dir, f"insp_{record_id:04d}.jpg")
+    if os.path.exists(img_path):
+        return FileResponse(img_path, media_type="image/jpeg")
+    raise HTTPException(status_code=404, detail="Inspection image not found")
 
 class RoiPayload(BaseModel):
     roi_size: Optional[int] = None
@@ -542,7 +606,8 @@ async def api_status():
         "camera_id": str(state.cam.camera_id) if state.cam else "0",
         "arduino_connected": state.arduino.is_connected,
         "is_paused": state.is_paused,
-        "logs": state.logs
+        "logs": state.logs,
+        "inspections": state.inspection_history[-10:]
     }
 
 @app.websocket("/ws")
@@ -574,7 +639,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 "camera_id": str(state.cam.camera_id) if state.cam else "0",
                 "arduino_connected": state.arduino.is_connected,
                 "is_paused": state.is_paused,
-                "logs": state.logs
+                "logs": state.logs,
+                "inspections": state.inspection_history[-10:]
             }
             await websocket.send_json(data)
             await asyncio.sleep(0.08)

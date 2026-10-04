@@ -81,6 +81,18 @@
   const statLatency = document.getElementById('stat-latency');
   const auditLogBody = document.getElementById('audit-log-body');
 
+  // Inspection Snapshot Modal Elements
+  const inspectionModal = document.getElementById('inspection-modal');
+  const modalCloseBtn = document.getElementById('modal-close-btn');
+  const modalDoneBtn = document.getElementById('modal-done-btn');
+  const modalTitle = document.getElementById('modal-title');
+  const modalVerdictBadge = document.getElementById('modal-verdict-badge');
+  const modalSnapshotImg = document.getElementById('modal-snapshot-img');
+  const modalTimeVal = document.getElementById('modal-time-val');
+  const modalVerdictVal = document.getElementById('modal-verdict-val');
+  const modalScoreVal = document.getElementById('modal-score-val');
+  const modalThresholdVal = document.getElementById('modal-threshold-val');
+
   // ------------------------------------------------------------------------
   // 2. Safe Storage & Theme Engine (Light / Dark Mode)
   // ------------------------------------------------------------------------
@@ -781,10 +793,52 @@
     if (statDefect) statDefect.textContent = data.fail_count;
     if (statRate) statRate.textContent = `${data.defect_rate.toFixed(1)}% DEFECT`;
 
-    // 6. Audit Trail Logs
-    if (data.logs && data.logs.length > 0) {
+    // 6. Audit Trail Logs & Still Snapshot History
+    if (data.inspections && data.inspections.length > 0) {
+      renderInspectionHistory(data.inspections);
+    } else if (data.logs && data.logs.length > 0) {
       renderAuditLogs(data.logs);
     }
+  }
+
+  function renderInspectionHistory(inspections) {
+    if (!auditLogBody) return;
+    auditLogBody.innerHTML = '';
+    // Show newest first, up to 6 records
+    const displayList = inspections.slice().reverse().slice(0, 6);
+
+    displayList.forEach(rec => {
+      const tr = document.createElement('tr');
+      tr.className = 'has-snapshot';
+      tr.title = '클릭하여 검사 시점 히트맵 스틸사진 및 상세 기록 보기';
+      const isPass = (rec.verdict === 'PASS');
+      const badgeClass = isPass ? 'pass' : 'fail';
+      const eventTitle = rec.event || 'QC_INSPECT';
+
+      tr.innerHTML = `
+        <td>${rec.time}</td>
+        <td style="font-weight: 600; color: var(--ink-primary);">${eventTitle}</td>
+        <td><span class="badge-pill ${badgeClass}">${rec.verdict}</span></td>
+        <td style="color: var(--ink-secondary); font-size: 0.70rem;">${rec.detail}</td>
+        <td style="text-align: center;">
+          <button type="button" class="chip-snapshot-view" data-record-id="${rec.id}">스틸사진 ↗</button>
+        </td>
+      `;
+
+      tr.addEventListener('click', () => {
+        openInspectionModal(rec);
+      });
+
+      const btn = tr.querySelector('.chip-snapshot-view');
+      if (btn) {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openInspectionModal(rec);
+        });
+      }
+
+      auditLogBody.appendChild(tr);
+    });
   }
 
   function renderAuditLogs(logs) {
@@ -798,7 +852,7 @@
       const tr = document.createElement('tr');
       let badgeClass = 'info';
       let verdictTag = 'INFO';
-      let eventTitle = 'INSPECTION';
+      let eventTitle = 'SYSTEM';
 
       if (log.includes('PASS')) {
         badgeClass = 'pass';
@@ -823,8 +877,53 @@
         <td style="font-weight: 600; color: var(--ink-primary);">${eventTitle}</td>
         <td><span class="badge-pill ${badgeClass}">${verdictTag}</span></td>
         <td style="color: var(--ink-secondary); font-size: 0.70rem;">${log}</td>
+        <td style="text-align: center; color: var(--ink-muted); font-size: 0.70rem;">-</td>
       `;
       auditLogBody.appendChild(tr);
+    });
+  }
+
+  function openInspectionModal(record) {
+    if (!inspectionModal) return;
+    if (modalTitle) modalTitle.textContent = `검사 기록 [#${record.id}] 스틸사진 상세`;
+    if (modalVerdictBadge) {
+      modalVerdictBadge.className = `badge-pill ${record.verdict === 'PASS' ? 'pass' : 'fail'}`;
+      modalVerdictBadge.textContent = record.verdict;
+    }
+    if (modalSnapshotImg) {
+      modalSnapshotImg.src = record.image_url;
+    }
+    if (modalTimeVal) {
+      modalTimeVal.textContent = `${record.date || ''} ${record.time}`;
+    }
+    if (modalVerdictVal) {
+      const isPass = (record.verdict === 'PASS');
+      modalVerdictVal.textContent = isPass ? 'PASS // 양품 (규격 적합)' : 'REJECT // 이상치 결함 감지';
+      modalVerdictVal.style.color = isPass ? 'var(--color-pass)' : 'var(--color-fail)';
+    }
+    if (modalScoreVal) {
+      modalScoreVal.textContent = `${record.score.toFixed(1)}%`;
+    }
+    if (modalThresholdVal) {
+      modalThresholdVal.textContent = `${record.threshold.toFixed(1)}%`;
+    }
+    inspectionModal.style.display = 'flex';
+    playTone(900, 0.04);
+  }
+
+  function closeInspectionModal() {
+    if (inspectionModal) {
+      inspectionModal.style.display = 'none';
+    }
+  }
+
+  if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeInspectionModal);
+  if (modalDoneBtn) modalDoneBtn.addEventListener('click', closeInspectionModal);
+  if (inspectionModal) {
+    inspectionModal.addEventListener('click', (e) => {
+      if (e.target === inspectionModal) {
+        closeInspectionModal();
+      }
     });
   }
 
@@ -921,7 +1020,9 @@
       return;
     }
 
-    if (e.key === 'c' || e.key === 'C') {
+    if (e.key === 'Escape') {
+      closeInspectionModal();
+    } else if (e.key === 'c' || e.key === 'C') {
       if (btnCapture) btnCapture.click();
     } else if (e.key === 't' || e.key === 'T') {
       if (btnTrain) btnTrain.click();

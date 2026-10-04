@@ -37,6 +37,8 @@ data/models/*
 !data/models/.gitkeep
 data/test/*
 !data/test/.gitkeep
+data/inspections/*
+!data/inspections/.gitkeep
 *.png
 *.jpg
 *.jpeg
