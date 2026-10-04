@@ -752,22 +752,45 @@
         if (sideScoreVal) sideScoreVal.textContent = '0.0%';
         lastVerdict = 'WAITING';
       } else if (data.verdict === 'READY') {
-        if (verdictBanner) verdictBanner.className = 'verdict-banner ready';
-        if (verdictIcon) verdictIcon.textContent = 'RDY';
-        if (verdictLabel) verdictLabel.textContent = '검사 대기 [스페이스 바]';
-        if (verdictSubtext) verdictSubtext.textContent = '부품 정렬 완료. 스페이스 바(SPACE) 또는 [검사] 버튼을 누르면 이상치를 판정합니다.';
-        if (cameraStatusTag) cameraStatusTag.textContent = '부품 감지됨 · 스페이스 바를 눌러 검사';
-        if (gaugeFillBar) gaugeFillBar.style.width = '0%';
-        if (gaugeScoreText) gaugeScoreText.textContent = '0.0%';
-        if (sideScoreVal) sideScoreVal.textContent = '0.0%';
-        lastVerdict = 'READY';
+        const isAnomalyLive = (data.live_is_anomaly === true);
+        const liveScorePct = (data.live_score !== undefined) ? (data.live_score * 100) : 0.0;
+
+        if (verdictBanner) {
+          verdictBanner.className = isAnomalyLive ? 'verdict-banner fail' : 'verdict-banner pass';
+        }
+        if (verdictIcon) {
+          verdictIcon.textContent = isAnomalyLive ? 'NG' : 'OK';
+        }
+        if (verdictLabel) {
+          verdictLabel.textContent = isAnomalyLive
+            ? 'REJECT // 실시간 이상치 결함 감지 [SPACE: 검사 저장]'
+            : 'PASS // 실시간 규격 적합 [SPACE: 검사 저장]';
+        }
+        if (verdictSubtext) {
+          verdictSubtext.textContent = `실시간 이상치: ${liveScorePct.toFixed(1)}% (임계치: ${thPct}%) · 스페이스 바(SPACE)를 누르면 스틸사진과 판정이 저장됩니다.`;
+        }
+        if (cameraStatusTag) {
+          cameraStatusTag.textContent = isAnomalyLive ? '실시간 이상 결함 감지 (REJECT) · [SPACE] 검사 저장' : '실시간 규격 양품 (PASS) · [SPACE] 검사 저장';
+          cameraStatusTag.style.color = isAnomalyLive ? '#F87171' : '#34D399';
+        }
+        if (gaugeFillBar) {
+          const livePct = Math.min(100, Math.max(0, (data.live_score / (data.threshold * 2)) * 100));
+          gaugeFillBar.style.width = `${livePct}%`;
+          gaugeFillBar.style.backgroundColor = isAnomalyLive ? 'var(--color-fail)' : 'var(--color-pass)';
+        }
+        if (gaugeScoreText) gaugeScoreText.textContent = `${liveScorePct.toFixed(1)}%`;
+        if (sideScoreVal) sideScoreVal.textContent = `${liveScorePct.toFixed(1)}%`;
+        lastVerdict = isAnomalyLive ? 'FAIL_LIVE' : 'PASS_LIVE';
       } else {
         if (data.verdict === 'PASS') {
           if (verdictBanner) verdictBanner.className = 'verdict-banner pass';
           if (verdictIcon) verdictIcon.textContent = 'OK';
           if (verdictLabel) verdictLabel.textContent = 'PASS // 규격 적합 양품';
           if (verdictSubtext) verdictSubtext.textContent = `이상치 점수(${scorePct.toFixed(1)}%)가 관리 임계치(${thPct}%) 이내입니다.`;
-          if (cameraStatusTag) cameraStatusTag.textContent = '정상 판정 (PASS)';
+          if (cameraStatusTag) {
+            cameraStatusTag.textContent = '정상 판정 (PASS)';
+            cameraStatusTag.style.color = '#34D399';
+          }
           if (lastVerdict !== 'PASS') {
             playTone(980, 0.08); // Confirmation chime
             lastVerdict = 'PASS';
@@ -777,7 +800,10 @@
           if (verdictIcon) verdictIcon.textContent = 'NG';
           if (verdictLabel) verdictLabel.textContent = 'REJECT // 이상치 결함 감지';
           if (verdictSubtext) verdictSubtext.textContent = `이상치 점수(${scorePct.toFixed(1)}%)가 임계치(${thPct}%)를 초과하여 선별 배출합니다.`;
-          if (cameraStatusTag) cameraStatusTag.textContent = '이상 결함 감지 (REJECT)';
+          if (cameraStatusTag) {
+            cameraStatusTag.textContent = '이상 결함 감지 (REJECT)';
+            cameraStatusTag.style.color = '#F87171';
+          }
           if (lastVerdict !== 'FAIL') {
             playTone(320, 0.16, 'sawtooth'); // Defect warning tone
             lastVerdict = 'FAIL';
@@ -793,7 +819,7 @@
     if (statDefect) statDefect.textContent = data.fail_count;
     if (statRate) statRate.textContent = `${data.defect_rate.toFixed(1)}% DEFECT`;
 
-    // 6. Audit Trail Logs & Still Snapshot History
+    // 6. Audit Trail Logs & Still Snapshot History (Anti-Flicker Cached)
     if (data.inspections && data.inspections.length > 0) {
       renderInspectionHistory(data.inspections);
     } else if (data.logs && data.logs.length > 0) {
@@ -801,15 +827,28 @@
     }
   }
 
+  let lastInspectionsSignature = '';
+  let lastLogsSignature = '';
+
   function renderInspectionHistory(inspections) {
     if (!auditLogBody) return;
+
+    // Cache signature check: DO NOT touch DOM if data has not changed!
+    // This completely eliminates hovering flicker and preserved click events.
+    const signature = inspections.map(r => `${r.id}:${r.time}:${r.verdict}:${r.score}`).join('|');
+    if (signature === lastInspectionsSignature) {
+      return;
+    }
+    lastInspectionsSignature = signature;
+    lastLogsSignature = '';
+
     auditLogBody.innerHTML = '';
-    // Show newest first, up to 6 records
     const displayList = inspections.slice().reverse().slice(0, 6);
 
     displayList.forEach(rec => {
       const tr = document.createElement('tr');
       tr.className = 'has-snapshot';
+      tr.setAttribute('data-id', rec.id);
       tr.title = '클릭하여 검사 시점 히트맵 스틸사진 및 상세 기록 보기';
       const isPass = (rec.verdict === 'PASS');
       const badgeClass = isPass ? 'pass' : 'fail';
@@ -825,13 +864,15 @@
         </td>
       `;
 
-      tr.addEventListener('click', () => {
+      tr.addEventListener('click', (e) => {
+        e.preventDefault();
         openInspectionModal(rec);
       });
 
       const btn = tr.querySelector('.chip-snapshot-view');
       if (btn) {
         btn.addEventListener('click', (e) => {
+          e.preventDefault();
           e.stopPropagation();
           openInspectionModal(rec);
         });
@@ -843,6 +884,14 @@
 
   function renderAuditLogs(logs) {
     if (!auditLogBody) return;
+
+    const signature = logs.join('|');
+    if (signature === lastLogsSignature) {
+      return;
+    }
+    lastLogsSignature = signature;
+    lastInspectionsSignature = '';
+
     auditLogBody.innerHTML = '';
     const displayLogs = logs.slice().reverse().slice(0, 5);
     const now = new Date();
@@ -887,11 +936,12 @@
     if (!inspectionModal) return;
     if (modalTitle) modalTitle.textContent = `검사 기록 [#${record.id}] 스틸사진 상세`;
     if (modalVerdictBadge) {
-      modalVerdictBadge.className = `badge-pill ${record.verdict === 'PASS' ? 'pass' : 'fail'}`;
+      const isPass = (record.verdict === 'PASS');
+      modalVerdictBadge.className = `badge-pill ${isPass ? 'pass' : 'fail'}`;
       modalVerdictBadge.textContent = record.verdict;
     }
     if (modalSnapshotImg) {
-      modalSnapshotImg.src = record.image_url;
+      modalSnapshotImg.src = record.image_data || `${record.image_url}?t=${Date.now()}`;
     }
     if (modalTimeVal) {
       modalTimeVal.textContent = `${record.date || ''} ${record.time}`;
@@ -902,10 +952,10 @@
       modalVerdictVal.style.color = isPass ? 'var(--color-pass)' : 'var(--color-fail)';
     }
     if (modalScoreVal) {
-      modalScoreVal.textContent = `${record.score.toFixed(1)}%`;
+      modalScoreVal.textContent = `${Number(record.score).toFixed(1)}%`;
     }
     if (modalThresholdVal) {
-      modalThresholdVal.textContent = `${record.threshold.toFixed(1)}%`;
+      modalThresholdVal.textContent = `${Number(record.threshold).toFixed(1)}%`;
     }
     inspectionModal.style.display = 'flex';
     playTone(900, 0.04);
@@ -917,8 +967,18 @@
     }
   }
 
-  if (modalCloseBtn) modalCloseBtn.addEventListener('click', closeInspectionModal);
-  if (modalDoneBtn) modalDoneBtn.addEventListener('click', closeInspectionModal);
+  if (modalCloseBtn) {
+    modalCloseBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      closeInspectionModal();
+    });
+  }
+  if (modalDoneBtn) {
+    modalDoneBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      closeInspectionModal();
+    });
+  }
   if (inspectionModal) {
     inspectionModal.addEventListener('click', (e) => {
       if (e.target === inspectionModal) {

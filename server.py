@@ -80,6 +80,8 @@ class SystemState:
         self.part_present = False
         self.is_paused = False
         self.logs = ["AI Machine Vision Server initialized. Ready."]
+        self.live_score = 0.0
+        self.live_is_anomaly = False
         
         # Inspection History & Still Snapshots
         self.inspections_dir = "data/inspections"
@@ -200,6 +202,8 @@ def vision_worker():
 
                 live_score = res['anomaly_score']
                 is_anomaly = res['is_anomaly']
+                state.live_score = live_score
+                state.live_is_anomaly = is_anomaly
 
                 # Trigger Inspection Event on Space key (or manual/auto trigger)
                 trigger_inspection = False
@@ -232,9 +236,12 @@ def vision_worker():
 
                     still_frame = state.latest_heatmap_frame.copy()
                     ret_enc, img_buf = cv2.imencode('.jpg', still_frame, [cv2.IMWRITE_JPEG_QUALITY, 90])
+                    b64_img = ""
                     if ret_enc:
                         img_bytes = img_buf.tobytes()
                         state.inspection_images[rec_id] = img_bytes
+                        import base64
+                        b64_img = f"data:image/jpeg;base64,{base64.b64encode(img_bytes).decode('ascii')}"
                         try:
                             img_path = os.path.join(state.inspections_dir, f"insp_{rec_id:04d}.jpg")
                             with open(img_path, "wb") as f:
@@ -251,6 +258,7 @@ def vision_worker():
                         "score": round(live_score * 100, 1),
                         "threshold": round(state.detector.threshold * 100, 1),
                         "image_url": f"/api/inspection_image/{rec_id}",
+                        "image_data": b64_img,
                         "detail": f"검사 판정: {state.current_verdict} (이상치: {(live_score*100):.1f}%)"
                     }
                     state.inspection_history.append(record)
@@ -264,6 +272,8 @@ def vision_worker():
                     # Empty inspection zone: Neutral standby display
                     state.current_score = 0.0
                     state.current_verdict = "WAITING"
+                    state.live_score = 0.0
+                    state.live_is_anomaly = False
                     state.comp_detector.inspected_current_part = False
                 elif state.current_verdict not in ["PASS", "FAIL"]:
                     # Part is present, awaiting Space key trigger
@@ -336,10 +346,10 @@ def generate_mjpeg_stream(stream_type="main"):
                     if state.mode == "INSPECT":
                         if not state.part_present:
                             status_color = (200, 180, 150) # Precision Standby Slate
-                        elif state.current_verdict == "FAIL":
-                            status_color = (30, 30, 255)   # Vivid Alert Red
+                        elif getattr(state, 'live_is_anomaly', False):
+                            status_color = (30, 30, 255)   # Vivid Alert Red (실시간 결함 감지)
                         else:
-                            status_color = (30, 225, 60)   # Optical Emerald
+                            status_color = (30, 225, 60)   # Optical Emerald (실시간 정상 양품)
                     
                     # 1. Bolder boundary frame (2px thickness, high visibility)
                     cv2.rectangle(frame, (x1, y1), (x2, y2), status_color, 2, cv2.LINE_AA)
@@ -493,11 +503,12 @@ async def api_trigger():
 
 @app.get("/api/inspection_image/{record_id}")
 async def api_inspection_image(record_id: int):
+    headers = {"Cache-Control": "no-cache, no-store, must-revalidate", "Pragma": "no-cache", "Expires": "0"}
     if record_id in state.inspection_images:
-        return Response(content=state.inspection_images[record_id], media_type="image/jpeg")
+        return Response(content=state.inspection_images[record_id], media_type="image/jpeg", headers=headers)
     img_path = os.path.join(state.inspections_dir, f"insp_{record_id:04d}.jpg")
     if os.path.exists(img_path):
-        return FileResponse(img_path, media_type="image/jpeg")
+        return FileResponse(img_path, media_type="image/jpeg", headers=headers)
     raise HTTPException(status_code=404, detail="Inspection image not found")
 
 class RoiPayload(BaseModel):
@@ -590,6 +601,8 @@ async def api_status():
         "auto_inspect": state.auto_inspect,
         "part_present": state.part_present,
         "score": round(state.current_score, 3),
+        "live_score": round(getattr(state, 'live_score', 0.0), 3),
+        "live_is_anomaly": getattr(state, 'live_is_anomaly', False),
         "threshold": round(state.detector.threshold, 2),
         "verdict": state.current_verdict,
         "sample_count": len(state.captured_samples),
@@ -623,6 +636,8 @@ async def websocket_endpoint(websocket: WebSocket):
                 "auto_inspect": state.auto_inspect,
                 "part_present": state.part_present,
                 "score": round(state.current_score, 3),
+                "live_score": round(getattr(state, 'live_score', 0.0), 3),
+                "live_is_anomaly": getattr(state, 'live_is_anomaly', False),
                 "threshold": round(state.detector.threshold, 2),
                 "verdict": state.current_verdict,
                 "sample_count": len(state.captured_samples),
