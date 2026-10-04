@@ -1052,46 +1052,48 @@ body {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   width: 100%;
 }
 
 .snapshot-time-box {
-  flex: 0 0 92px;
-  height: 56px;
+  flex: 1;
+  min-width: 105px;
+  height: 104px;
   background: var(--bg-input);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
-  padding: 0 4px;
+  gap: 4px;
+  padding: 8px 10px;
 }
 
 .time-box-label {
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--ink-muted);
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
 }
 
 .time-box-val {
   font-family: var(--font-mono);
-  font-size: 0.88rem;
+  font-size: 1.35rem;
   font-weight: 700;
   color: var(--ink-primary);
   letter-spacing: 0.04em;
 }
 
 .snapshot-thumb-card {
-  flex: 1;
-  min-width: 0;
-  height: 56px;
+  flex: 0 0 104px;
+  width: 104px;
+  height: 104px;
+  aspect-ratio: 1 / 1;
   background: #000000;
   border: 1px solid var(--border-subtle);
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-md);
   position: relative;
   overflow: hidden;
   display: flex;
@@ -1103,20 +1105,21 @@ body {
 
 .snapshot-thumb-card:hover {
   border-color: var(--ink-accent);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+  transform: translateY(-2px);
 }
 
 .snapshot-thumb-card img {
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
   display: block;
 }
 
 .thumb-mini-label {
   color: var(--ink-muted);
-  font-size: 0.72rem;
+  font-size: 0.75rem;
   font-family: var(--font-mono);
   font-weight: 600;
   letter-spacing: 0.04em;
@@ -1127,17 +1130,19 @@ body {
 
 .thumb-corner-tag {
   position: absolute;
-  bottom: 2px;
-  left: 4px;
-  background: rgba(0, 0, 0, 0.68);
-  color: rgba(255, 255, 255, 0.85);
+  bottom: 4px;
+  left: 6px;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+  color: #FFFFFF;
   font-family: var(--font-mono);
-  font-size: 0.58rem;
-  font-weight: 600;
-  padding: 1px 4px;
-  border-radius: 2px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   pointer-events: none;
-  letter-spacing: 0.02em;
+  letter-spacing: 0.04em;
 }
 
 .gauge-header-row {
