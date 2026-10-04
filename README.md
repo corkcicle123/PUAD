@@ -22,11 +22,13 @@ PUAD(PatchCore Unsupervised Anomaly Detection)는 제조 공정에서 정상(Nor
 - **Hardware Acceleration**: Apple Silicon MPS(Metal Performance Shaders) 및 CUDA, CPU 가속을 지원하여 15~30 FPS (~15ms)의 저지연 실시간 검사가 가능합니다.
 
 ### 2.2 Commercial Web Inspection Dashboard
-- **Zero-Delay 3-Screen Layout**: 메인 광학 뷰포트(LIVE)와 서브 검사창(ROI, HEATMAP)을 네이티브 CSS Grid로 구성하여 비디오 소켓 재연결 없이 0ms로 화면 전환을 수행합니다.
-- **Dynamic Inspection Zone (ROI)**: 부품 크기와 카메라 거리에 맞추어 검사 영역 크기(140px ~ 480px)를 실시간으로 미세 조정할 수 있습니다.
-- **Dual Laboratory Themes**: 고대비 클린룸 환경을 위한 고신뢰도 라이트 모드(Light Theme)와 인더스트리얼 다크 모드(Dark Theme)를 원클릭으로 전환할 수 있습니다.
-- **Camera & Hardware Power Management**: 하단 제어 레일을 통해 광학 센서 하드웨어를 즉시 대기(Standby) 및 완전 릴리즈하여 전력 소모 및 발열을 제어할 수 있습니다.
-- **Continuity Camera & Multi-Device Support**: Mac 내장 웹캠, USB 공업용 카메라, iPhone 연속성 카메라 및 네트워크 IP 스트림을 실시간 선택하여 전환할 수 있습니다.
+- **Zero-Delay 3-Screen Layout**: 광학 카메라(LIVE), 인스펙션 존(ROI), 이상치 히트맵(HEATMAP) 3개 피드를 실시간 스트리밍하며, 클릭 한 번으로 메인 화면과 서브 화면을 0ms 딜레이로 상호 전환합니다.
+- **Dynamic Inspection Zone (ROI) & 2-Axis Tuning**: 부품 크기와 광학 거리에 맞춰 검사 영역 크기(100px ~ 720px) 및 상/하/좌/우 위치 오프셋을 실시간으로 미세 조정할 수 있습니다.
+- **Space-Triggered Precision Inspection Strip**: 스페이스 바(SPACE)를 누른 시점의 초단위 검사 시각과 1:1 정사각 원본 크롭(RAW) 및 이상치 국소화 히트맵 스틸 사진을 가로 단일 행(`[검사시간 | RAW | 히트맵]`)으로 즉각 기록합니다.
+- **High-Resolution Inspection Audit Modal**: 검사 이력이나 스틸 썸네일을 클릭하면 원본 부품과 결함 히트맵을 고해상도로 나란히 대조 분석할 수 있는 상세 모달 뷰어를 제공합니다.
+- **Dual Laboratory Themes**: 고대비 클린룸 환경을 위한 고신뢰도 라이트 모드(기본)와 인더스트리얼 다크 모드를 원클릭으로 전환할 수 있습니다.
+- **Camera Standby & Resource Management**: 카메라 끄기/검사 일시중지 기능을 통해 센서 하드웨어를 릴리즈하여 유휴 상태의 전력 소모와 발열을 방지합니다.
+- **Continuity Camera & Multi-Device Support**: Mac 내장 웹캠, USB 산업용 카메라, iPhone 연속성 카메라(무선 고화질) 및 네트워크 IP 카메라 스트림을 동적으로 전환할 수 있습니다.
 
 ### 2.3 Hardware & PLC Integration
 - **Serial Communication Bridge**: 아두이노 기반 컨베이어 및 분류 시스템과 USB 시리얼(115200 Baud)로 통신합니다.
@@ -111,12 +113,20 @@ python3 server.py --port 8000
 
 - **접속 주소**: `http://localhost:8000`
 - **주요 인터페이스 기능**:
-  - `[CH-01 LIVE]`, `[CH-02 ROI]`, `[CH-03 HEATMAP]` 3분할 화면 및 메인 확대 전환
-  - 인스펙션 존 크기 슬라이더 (140px ~ 480px 및 200/280/380px 프리셋)
-  - 불량 판정 임계치(Threshold) 미세 조절
-  - 라이트/다크 테마 토글 버튼 (`☀️` / `🌙`)
-  - 카메라 끄기 및 검사 일시중지 버튼 (`⏸️` / `▶️`)
-  - 실시간 SPC 통계 (총 검사 수, 수율, 불량률, 추론 지연 시간, 감사 로그)
+  - `광학 카메라`, `인스펙션 존`, `이상치 히트맵` 3분할 뷰 및 클릭 시 0ms 포커스 전환
+  - 스페이스 키(`SPACE`)를 통한 즉각적인 정밀 검사 트리거 및 `[검사시간 | RAW | 히트맵]` 1:1 스틸 기록
+  - 100px ~ 720px 인스펙션 존 크기 조절 및 상/하/좌/우 2축 위치 미세 튜닝
+  - 불량 판정 임계치(Threshold) 슬라이더 (0.10 ~ 0.90) 및 프리셋
+  - 라이트 / 다크 테마 원클릭 전환
+  - 카메라 끄기 / 검사 일시중지 (`⏸️` / `▶️`)
+  - 실시간 SPC 품질 지표 (총 검사 수, 수율, 불량률, 추론 지연 시간, 검사 이력)
+  - 검사 기록 클릭 시 고해상도 결함 분석 모달 뷰어 제공
+- **키보드 단축키 지원**:
+  - `C`: 정상 부품 샘플 캡처 (등록 모드)
+  - `T`: 모델 학습 및 배포
+  - `SPACE`: 정밀 검사 실행
+  - `R`: 데이터 및 통계 초기화
+  - `ESC`: 검사 모달 닫기
 
 ### Option 2: Desktop Native HUD
 
