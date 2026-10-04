@@ -66,7 +66,7 @@ class SystemState:
         self.arduino = ArduinoBridge()
         
         self.mode = "ENROLL"  # "ENROLL" or "INSPECT"
-        self.auto_inspect = True
+        self.auto_inspect = False
         self.manual_trigger_pending = False
         
         self.captured_samples = []
@@ -177,48 +177,53 @@ def vision_worker():
 
             # 3. Handle Inspection logic
             if state.mode == "INSPECT":
-                # Continuous live inference on inspection zone (GPU accelerated: 12-25ms)
-                t0 = time.time()
-                res = state.detector.predict(comp_crop)
-                state.last_latency = (time.time() - t0) * 1000
-                state.pred_result = res
+                inspect_target = comp_crop if (is_present and comp_crop is not None) else roi
 
-                # Generate Continuous Real-time Heatmap
-                norm_map = res['anomaly_map']
-                heatmap_raw = np.uint8(255 * norm_map)
-                heatmap_color = cv2.applyColorMap(heatmap_raw, cv2.COLORMAP_JET)
-                state.latest_heatmap_frame = cv2.addWeighted(comp_crop, 0.55, heatmap_color, 0.45, 0)
+                trigger_inspection = False
+                if state.manual_trigger_pending:
+                    trigger_inspection = True
+                    state.manual_trigger_pending = False
+                elif state.auto_inspect and is_present:
+                    is_stable = state.comp_detector.check_motion_stability(inspect_target)
+                    if is_stable and not state.comp_detector.inspected_current_part:
+                        trigger_inspection = True
+                        state.comp_detector.inspected_current_part = True
 
-                if not is_present:
-                    # Empty inspection zone: Neutral standby display
-                    state.current_score = 0.0
-                    state.current_verdict = "WAITING"
-                else:
+                if trigger_inspection:
+                    t0 = time.time()
+                    res = state.detector.predict(inspect_target)
+                    state.last_latency = (time.time() - t0) * 1000
+                    state.pred_result = res
+
+                    # Generate Continuous / Inspected Heatmap
+                    norm_map = res['anomaly_map']
+                    heatmap_raw = np.uint8(255 * norm_map)
+                    heatmap_color = cv2.applyColorMap(heatmap_raw, cv2.COLORMAP_JET)
+                    state.latest_heatmap_frame = cv2.addWeighted(inspect_target, 0.55, heatmap_color, 0.45, 0)
+
                     state.current_score = res['anomaly_score']
                     is_anomaly = res['is_anomaly']
                     state.current_verdict = "FAIL" if is_anomaly else "PASS"
 
-                    # Determine if an official Inspection Event should be recorded
-                    is_stable = state.comp_detector.check_motion_stability(comp_crop)
-                    should_record_event = False
+                    state.total_tested += 1
+                    if is_anomaly:
+                        state.fail_count += 1
+                        state.arduino.send_verdict("FAIL")
+                    else:
+                        state.pass_count += 1
+                        state.arduino.send_verdict("PASS")
 
-                    if state.manual_trigger_pending:
-                        should_record_event = True
-                        state.manual_trigger_pending = False
-                        state.add_log(f"Triggered Inspection: {state.current_verdict} (Score: {(state.current_score*100):.1f}%)")
-                    elif state.auto_inspect and is_stable and not state.comp_detector.inspected_current_part:
-                        should_record_event = True
-                        state.comp_detector.inspected_current_part = True
-                        state.add_log(f"Auto Inspected Part: {state.current_verdict} (Score: {(state.current_score*100):.1f}%)")
-
-                    if should_record_event:
-                        state.total_tested += 1
-                        if is_anomaly:
-                            state.fail_count += 1
-                            state.arduino.send_verdict("FAIL")
-                        else:
-                            state.pass_count += 1
-                            state.arduino.send_verdict("PASS")
+                    state.add_log(f"검사 판정: {state.current_verdict} (이상치 점수: {(state.current_score*100):.1f}%)")
+                elif not is_present:
+                    # Empty inspection zone: Neutral standby display
+                    state.current_score = 0.0
+                    state.current_verdict = "WAITING"
+                    state.latest_heatmap_frame = None
+                    state.comp_detector.inspected_current_part = False
+                elif state.current_verdict not in ["PASS", "FAIL"]:
+                    # Part is present, awaiting Space key trigger
+                    state.current_verdict = "READY"
+                    state.current_score = 0.0
 
             elif state.mode == "ENROLL":
                 state.current_verdict = "ENROLL"
@@ -327,9 +332,12 @@ def generate_mjpeg_stream(stream_type="main"):
                     if state.mode == "ENROLL":
                         msg = "ENROLL MODE [PRESS C]"
                         cv2.putText(frame, msg, (20, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.62, (150, 150, 150), 2)
+                    elif state.part_present:
+                        msg = "READY [PRESS SPACE]"
+                        cv2.putText(frame, msg, (15, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.58, (150, 150, 150), 2)
                     else:
-                        msg = "INITIALIZING..."
-                        cv2.putText(frame, msg, (60, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.65, (150, 150, 150), 2)
+                        msg = "AWAITING PART..."
+                        cv2.putText(frame, msg, (35, 145), cv2.FONT_HERSHEY_SIMPLEX, 0.60, (150, 150, 150), 2)
                     
             ret, buffer = cv2.imencode('.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, 85])
             if not ret:

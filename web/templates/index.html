@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ko" data-theme="dark">
+<html lang="ko" data-theme="light">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -11,7 +11,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" type="text/css" href="https://webfontbox.github.io/Arita/font.css">
   
-  <link rel="stylesheet" href="/static/css/style.css?v=20261003_v22">
+  <link rel="stylesheet" href="/static/css/style.css?v=20261004_v24">
 </head>
 <body>
 
@@ -28,7 +28,7 @@
           <h1 class="brand-title">PUAD</h1>
         </div>
         <div class="theme-switch-wrapper" title="다크 / 라이트 모드 전환">
-          <button class="theme-toggle-switch" id="theme-toggle-btn" type="button" role="switch" aria-checked="true" aria-label="테마 전환 토글 스위치">
+          <button class="theme-toggle-switch" id="theme-toggle-btn" type="button" role="switch" aria-checked="false" aria-label="테마 전환 토글 스위치">
             <span class="switch-track-icon sun" aria-hidden="true">
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                 <circle cx="12" cy="12" r="4"/>
@@ -142,7 +142,7 @@
             <circle cx="12" cy="12" r="10"/>
             <polyline points="12 6 12 12 16 14"/>
           </svg>
-          <span id="auto-mode-text">자동 검사 (Auto-Debounce)</span>
+          <span id="auto-mode-text">수동 검사 (SPACE)</span>
         </button>
       </div>
 
@@ -258,7 +258,7 @@
                 <line x1="12" y1="8" x2="12" y2="16"/>
                 <line x1="8" y1="12" x2="16" y2="12"/>
               </svg>
-              즉시 검사
+              검사
               <span class="key-tag">SPACE</span>
             </button>
 
@@ -282,8 +282,8 @@
           <div class="verdict-left">
             <div class="verdict-status-icon" id="verdict-icon">--</div>
             <div class="verdict-text-group">
-              <h2 id="verdict-label">AWAITING COMPONENT</h2>
-              <div class="verdict-caption" id="verdict-subtext">광학 검사 영역에 부품이 감지되면 즉시 분석합니다.</div>
+              <h2 id="verdict-label">부품 감지 대기 중</h2>
+              <div class="verdict-caption" id="verdict-subtext">인스펙션 존에 부품을 위치시킨 후 스페이스 바를 눌러 검사합니다.</div>
             </div>
           </div>
           <div class="verdict-score-group">
@@ -426,7 +426,7 @@
               <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
               </svg>
-              <span>실시간 검사 이력 (Audit Trail Log)</span>
+              <span>검사 이력</span>
             </div>
           </div>
 
@@ -458,6 +458,6 @@
 
   </div>
 
-  <script src="/static/js/app.js?v=20261003_v22"></script>
+  <script src="/static/js/app.js?v=20261004_v24"></script>
 </body>
 </html>

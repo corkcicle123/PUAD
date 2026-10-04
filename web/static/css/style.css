@@ -885,6 +885,11 @@ body {
   border-color: var(--color-enroll-border);
 }
 
+.verdict-banner.ready {
+  background: var(--color-brand-subtle);
+  border-color: var(--color-brand);
+}
+
 .verdict-left {
   display: flex;
   align-items: center;
@@ -925,6 +930,14 @@ body {
   box-shadow: 0 0 14px rgba(239, 68, 68, 0.45);
 }
 
+.verdict-banner.ready .verdict-status-icon {
+  background: var(--color-brand);
+  color: #FFFFFF;
+  border-color: var(--color-brand);
+  -webkit-text-stroke: 0.4px #FFFFFF;
+  box-shadow: 0 0 12px rgba(37, 99, 235, 0.35);
+}
+
 .verdict-banner.enroll .verdict-status-icon {
   background: var(--color-enroll);
   color: #FFFFFF;
@@ -953,9 +966,29 @@ body {
   text-shadow: 0 0 10px rgba(248, 113, 113, 0.35);
 }
 
+.verdict-banner.ready .verdict-text-group h2 {
+  color: #38BDF8;
+  font-weight: 850;
+}
+
 .verdict-banner.enroll .verdict-text-group h2 {
   color: #A78BFA;
   font-weight: 800;
+}
+
+[data-theme="light"] .verdict-banner.pass .verdict-text-group h2 {
+  color: #047857;
+  -webkit-text-stroke: 0.2px #047857;
+}
+
+[data-theme="light"] .verdict-banner.fail .verdict-text-group h2 {
+  color: #DC2626;
+  -webkit-text-stroke: 0.3px #DC2626;
+  text-shadow: none;
+}
+
+[data-theme="light"] .verdict-banner.ready .verdict-text-group h2 {
+  color: #1D4ED8;
 }
 
 .verdict-caption {

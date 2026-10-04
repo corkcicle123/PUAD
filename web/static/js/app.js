@@ -86,9 +86,9 @@
   // ------------------------------------------------------------------------
   function safeGetTheme() {
     try {
-      return localStorage.getItem('puad-theme') || 'dark';
+      return localStorage.getItem('puad-theme') || 'light';
     } catch (e) {
-      return 'dark';
+      return 'light';
     }
   }
 
@@ -101,7 +101,7 @@
   }
 
   function applyTheme(theme) {
-    const validTheme = (theme === 'light') ? 'light' : 'dark';
+    const validTheme = (theme === 'dark') ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', validTheme);
     safeSetTheme(validTheme);
     
@@ -120,8 +120,8 @@
     themeToggleBtn.addEventListener('click', (e) => {
       e.preventDefault();
       e.stopPropagation();
-      const current = document.documentElement.getAttribute('data-theme') || 'dark';
-      const nextTheme = (current === 'light') ? 'dark' : 'light';
+      const current = document.documentElement.getAttribute('data-theme') || 'light';
+      const nextTheme = (current === 'dark') ? 'light' : 'dark';
       applyTheme(nextTheme);
       playTone(850, 0.05);
     });
@@ -647,7 +647,7 @@
     }
 
     if (autoModeText) {
-      autoModeText.textContent = data.auto_inspect ? 'AUTO-INSPECT: ON' : 'MANUAL (SPACE)';
+      autoModeText.textContent = data.auto_inspect ? '자동 검사 (ON)' : '수동 검사 (SPACE)';
       autoModeText.style.color = data.auto_inspect ? 'var(--color-pass)' : 'var(--ink-secondary)';
     }
 
@@ -729,15 +729,26 @@
       if (verdictSubtext) verdictSubtext.textContent = '정상 부품 데이터 수집 중 (카메라 중앙 정렬 후 [C] 클릭)';
       if (cameraStatusTag) cameraStatusTag.textContent = `샘플 등록 모드 [${data.sample_count}/15]`;
     } else {
-      if (!data.part_present) {
+      if (!data.part_present || data.verdict === 'WAITING') {
         if (verdictBanner) verdictBanner.className = 'verdict-banner standby';
         if (verdictIcon) verdictIcon.textContent = '--';
-        if (verdictLabel) verdictLabel.textContent = 'AWAITING COMPONENT';
-        if (verdictSubtext) verdictSubtext.textContent = '광학 검사 영역에 부품이 감지되면 즉시 분석합니다.';
+        if (verdictLabel) verdictLabel.textContent = '부품 감지 대기 중';
+        if (verdictSubtext) verdictSubtext.textContent = '인스펙션 존에 부품을 위치시키면 검사 대기 상태가 됩니다.';
         if (cameraStatusTag) cameraStatusTag.textContent = '광학 비전 대기 중';
         if (gaugeFillBar) gaugeFillBar.style.width = '0%';
         if (gaugeScoreText) gaugeScoreText.textContent = '0.0%';
         if (sideScoreVal) sideScoreVal.textContent = '0.0%';
+        lastVerdict = 'WAITING';
+      } else if (data.verdict === 'READY') {
+        if (verdictBanner) verdictBanner.className = 'verdict-banner ready';
+        if (verdictIcon) verdictIcon.textContent = 'RDY';
+        if (verdictLabel) verdictLabel.textContent = '검사 대기 [스페이스 바]';
+        if (verdictSubtext) verdictSubtext.textContent = '부품 정렬 완료. 스페이스 바(SPACE) 또는 [검사] 버튼을 누르면 이상치를 판정합니다.';
+        if (cameraStatusTag) cameraStatusTag.textContent = '부품 감지됨 · 스페이스 바를 눌러 검사';
+        if (gaugeFillBar) gaugeFillBar.style.width = '0%';
+        if (gaugeScoreText) gaugeScoreText.textContent = '0.0%';
+        if (sideScoreVal) sideScoreVal.textContent = '0.0%';
+        lastVerdict = 'READY';
       } else {
         if (data.verdict === 'PASS') {
           if (verdictBanner) verdictBanner.className = 'verdict-banner pass';
